@@ -340,6 +340,14 @@ class Board {
       box.appendChild(el);
     });
     dialog.classList.add('open');
+    // Close on backdrop click
+    const onBackdrop = e => {
+      if (e.target === dialog) {
+        dialog.classList.remove('open');
+        dialog.removeEventListener('click', onBackdrop);
+      }
+    };
+    dialog.addEventListener('click', onBackdrop);
   }
 
   /* ── Public API ───────────────────────────────────────────── */
