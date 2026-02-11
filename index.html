@@ -4,8 +4,104 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>G414 Chess Engine</title>
+  <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
-  <p>Loading...</p>
+<div id="app">
+
+  <!-- ── Header ──────────────────────────────────────────── -->
+  <header>
+    <h1>G414 Chess Engine</h1>
+    <div class="controls">
+      <button class="btn" id="btn-flip">Flip Board</button>
+      <button class="btn" id="btn-new">New Game</button>
+      <button class="btn primary" id="btn-analyze">Analyze</button>
+      <button class="btn" id="btn-stop">Stop</button>
+    </div>
+  </header>
+
+  <!-- ── Left Panel ──────────────────────────────────────── -->
+  <aside id="left-panel">
+
+    <div class="panel-card">
+      <h3>Engine Settings</h3>
+      <label>Depth <span id="depth-val">12</span></label>
+      <input type="range" id="depth-slider" min="1" max="20" value="12" />
+      <label>Lines (MultiPV) <span id="lines-val">8</span></label>
+      <input type="range" id="lines-slider" min="1" max="32" value="8" />
+      <label>Worker threads <span id="workers-val">8</span></label>
+      <input type="range" id="workers-slider" min="1" max="16" value="8" />
+      <label>Plans (concurrent)</label>
+      <input type="number" id="plans-input" value="256" min="8" max="512" step="8" />
+    </div>
+
+    <div class="panel-card">
+      <h3>Position</h3>
+      <label>FEN</label>
+      <input type="text" id="fen-input" value="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1" />
+      <div class="controls">
+        <button class="btn" id="btn-load-fen">Load FEN</button>
+        <button class="btn" id="btn-copy-fen">Copy FEN</button>
+      </div>
+    </div>
+
+    <div class="panel-card" style="flex:1; min-height:0;">
+      <h3>Move History</h3>
+      <div id="move-list"></div>
+    </div>
+
+  </aside>
+
+  <!-- ── Board Area ───────────────────────────────────────── -->
+  <main id="board-area">
+
+    <div id="eval-bar-wrap">
+      <div id="eval-bar"><div id="eval-fill"></div></div>
+      <span id="eval-score">0.00</span>
+    </div>
+
+    <div id="board-container">
+      <div id="board"></div>
+      <canvas id="lines-canvas"></canvas>
+    </div>
+
+  </main>
+
+  <!-- ── Right Panel ─────────────────────────────────────── -->
+  <aside id="right-panel">
+
+    <div class="panel-card" style="flex:1; min-height:0; overflow:hidden; display:flex; flex-direction:column;">
+      <h3>Analysis Lines <span id="lines-count" style="color:var(--accent)"></span></h3>
+      <div id="lines-list"></div>
+    </div>
+
+    <div class="panel-card">
+      <h3>Engine Info</h3>
+      <div id="engine-info" style="font-size:0.78rem; color:var(--text-muted); line-height:1.6;"></div>
+    </div>
+
+  </aside>
+
+  <!-- ── Status Bar ───────────────────────────────────────── -->
+  <footer id="status-bar">
+    <span id="status-text">Ready</span>
+    <span id="nps-text"></span>
+    <span id="time-text"></span>
+  </footer>
+
+</div>
+
+<!-- Promotion Dialog -->
+<div id="promo-dialog">
+  <div class="promo-box" id="promo-box"></div>
+</div>
+
+<script src="js/chess.js"></script>
+<script src="js/pieces.js"></script>
+<script src="js/board.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/analysis.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
 </body>
 </html>
