@@ -12,6 +12,10 @@
  * variation subtree.
  */
 
+/**
+ * COLOR_PALETTE provides 32 distinct, vivid hues for analysis lines.
+ * Earlier lines (better eval) receive warmer, more saturated colors.
+ */
 /* ── Distinct line colors (32 vivid hues) ─────────────────── */
 const LINE_COLORS = [
   '#ff4d4d','#ff9f40','#ffdd57','#48c774',
