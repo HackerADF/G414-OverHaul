@@ -127,3 +127,45 @@ header h1 {
 }
 .sq.last-from, .sq.last-to { background: var(--sq-last) !important; }
 .sq.in-check { background: var(--sq-check) !important; }
+
+/* ── Coordinates ──────────────────────────────────────────── */
+.coord-file, .coord-rank {
+  position: absolute;
+  font-size: calc(var(--board-size) / 52);
+  font-weight: 700;
+  line-height: 1;
+  pointer-events: none;
+  z-index: 2;
+}
+.coord-file {
+  bottom: 2px;
+  right: 3px;
+}
+.coord-rank {
+  top: 2px;
+  left: 3px;
+}
+.sq.light .coord-file,
+.sq.light .coord-rank { color: var(--sq-dark); }
+.sq.dark  .coord-file,
+.sq.dark  .coord-rank { color: var(--sq-light); }
+
+/* ── Pieces ───────────────────────────────────────────────── */
+.piece {
+  position: absolute;
+  width: 88%;
+  height: 88%;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  cursor: grab;
+  z-index: 10;
+  transition: transform 0.05s;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.6));
+}
+.piece.dragging {
+  cursor: grabbing;
+  z-index: 100;
+  transform: scale(1.18);
+  pointer-events: none;
+}
