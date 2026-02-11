@@ -193,6 +193,11 @@ let  _nodes = 0;
 function alphaBeta(chess, depth, alpha, beta, maximizing, killers, history) {
   _nodes++;
 
+  // Transposition table lookup
+  const fen = chess.fen();
+  const ttHit = ttGet(fen, depth, alpha, beta);
+  if (ttHit !== null) return ttHit;
+
   if (depth === 0) return quiescence(chess, alpha, beta, maximizing);
 
   if (chess.game_over()) return evaluate(chess);
@@ -217,6 +222,13 @@ function alphaBeta(chess, depth, alpha, beta, maximizing, killers, history) {
     }
     if (alpha >= beta) break;
   }
+
+  // Store in TT
+  const flag = best >= beta  ? TT_LOWER
+             : best <= alpha ? TT_UPPER
+             : TT_EXACT;
+  ttSet(fen, depth, best, flag);
+
   return best;
 }
 
