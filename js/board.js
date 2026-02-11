@@ -364,6 +364,15 @@ class Board {
 
   setAnalysisLines(lines) {
     this.analysisLines = lines;
+    // Highlight best-move source square
+    for (const el of Object.values(this._squares)) {
+      el.classList.remove('best-move-sq');
+    }
+    if (lines.length && lines[0].moves?.length) {
+      const bestFrom = lines[0].moves[0];
+      // bestFrom is SAN (e.g. "e4") not algebraic – just draw arrow
+      // Arrow drawing handles the visual; no extra highlight needed here
+    }
     this._drawLines();
   }
 
