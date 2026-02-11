@@ -67,6 +67,8 @@ class UI {
       this.$workersVal.textContent = this.$workersSlider.value;
     });
 
+    document.getElementById('btn-play-engine').addEventListener('click', () => this.togglePlayVsEngine());
+
     // Keyboard
     document.addEventListener('keydown', e => {
       if (e.key === 'ArrowLeft')  this.goBack();
@@ -138,6 +140,13 @@ class UI {
     }
 
     this.$gameOverBanner.classList.remove('show');
+
+    // If playing vs engine and it's engine's turn, trigger engine move
+    if (this._playVsEngine) {
+      setTimeout(() => this._maybeEngineMove(), 100);
+      return;
+    }
+
     // Auto-analyse after each move
     this.startAnalysis();
   }
@@ -205,6 +214,42 @@ class UI {
     for (let i = 0; i <= idx; i++) chess.move(h[i]);
     this.chess.load(chess.fen());
     this.board.render();
+  }
+
+  /* ── Play vs Engine ───────────────────────────────────────── */
+  togglePlayVsEngine() {
+    this._playVsEngine = !this._playVsEngine;
+    const btn = document.getElementById('btn-play-engine');
+    if (this._playVsEngine) {
+      btn.textContent = '⏹ Stop Playing';
+      btn.classList.add('primary');
+      this.setStatus('Playing vs Engine — you are White');
+      this._maybeEngineMove();
+    } else {
+      btn.textContent = '▶ Play vs Engine';
+      btn.classList.remove('primary');
+      this.setStatus('Play mode off');
+    }
+  }
+
+  _maybeEngineMove() {
+    if (!this._playVsEngine) return;
+    if (this.chess.game_over()) return;
+    if (this.chess.turn() !== 'b') return; // engine plays black
+
+    this.setStatus('<span class="spinner"></span>Engine thinking…', true);
+    const fen   = this.chess.fen();
+    const depth = parseInt(this.$depthSlider.value);
+    const w = new Worker('js/worker.js');
+    w.onmessage = e => {
+      w.terminate();
+      const lines = e.data.lines;
+      if (!lines?.length) return;
+      const best = lines[0].move;
+      if (!best) return;
+      this.onMove(best.from, best.to, best.promotion || null);
+    };
+    w.postMessage({ fen, depth, multiPV: 1, taskId: 'play' });
   }
 
   /* ── Analysis ─────────────────────────────────────────────── */
