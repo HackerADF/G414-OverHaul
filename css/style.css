@@ -414,6 +414,23 @@ input[type=number], select {
 ::-webkit-scrollbar-track { background: var(--surface); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
+/* ── Game Over Banner ─────────────────────────────────────── */
+#game-over-banner {
+  display: none;
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  padding: 12px;
+  background: rgba(0,0,0,0.82);
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: .04em;
+  z-index: 50;
+  backdrop-filter: blur(4px);
+}
+#game-over-banner.show { display: block; }
+
 /* ── Responsive ───────────────────────────────────────────── */
 @media (max-width: 900px) {
   #app {
