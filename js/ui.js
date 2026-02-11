@@ -38,6 +38,11 @@ class UI {
 
   /* ── Control bindings ─────────────────────────────────────── */
   _bindControls() {
+    document.getElementById('btn-theme').addEventListener('click', () => {
+      document.body.classList.toggle('light');
+      const isLight = document.body.classList.contains('light');
+      document.getElementById('btn-theme').textContent = isLight ? '🌙' : '☀';
+    });
     document.getElementById('btn-flip').addEventListener('click', () => this.board.flip());
     document.getElementById('btn-new').addEventListener('click', () => this.newGame());
     document.getElementById('btn-analyze').addEventListener('click', () => this.startAnalysis());
