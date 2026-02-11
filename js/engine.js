@@ -278,7 +278,10 @@ function searchRoot(fen, depth, multiPV) {
     let score = 0;
     // Iterative deepening on each root move
     for (let d = 1; d <= depth; d++) {
-      score = alphaBeta(chess, d - 1, -INFINITY, INFINITY, !max, {}, {});
+      const s = alphaBeta(chess, d - 1, -INFINITY, INFINITY, !max, {}, {});
+      // Stop early on forced mate
+      if (Math.abs(s) >= 29000) { score = s; break; }
+      score = s;
     }
     chess.undo();
     results.push({ move, score: max ? score : -score });
