@@ -51,8 +51,10 @@ class Board {
           el.appendChild(file);
         }
 
-        el.addEventListener('mousedown', e => this._onSquareMouseDown(e, sq));
-        el.addEventListener('mouseup',   e => this._onSquareMouseUp(e, sq));
+        el.addEventListener('mousedown',  e => this._onSquareMouseDown(e, sq));
+        el.addEventListener('mouseup',    e => this._onSquareMouseUp(e, sq));
+        el.addEventListener('touchstart', e => { e.preventDefault(); this._onSquareMouseDown(e.touches[0], sq); }, { passive: false });
+        el.addEventListener('touchend',   e => { e.preventDefault(); this._onSquareMouseUp(e.changedTouches[0], sq); }, { passive: false });
 
         this.$board.appendChild(el);
         this._squares[sq] = el;
