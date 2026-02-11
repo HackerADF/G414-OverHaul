@@ -377,6 +377,15 @@ input[type=number], select {
 }
 .promo-piece:hover { border-color: var(--accent); }
 
+/* ── Best-move pulse animation ────────────────────────────── */
+@keyframes bestMovePulse {
+  0%, 100% { opacity: 0.9; }
+  50%       { opacity: 0.45; }
+}
+.line-item.active .line-color-dot {
+  animation: bestMovePulse 1.4s ease-in-out infinite;
+}
+
 /* ── Scrollbar ────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: var(--surface); }
