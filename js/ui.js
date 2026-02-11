@@ -27,6 +27,9 @@ class UI {
     this.$plansInput    = document.getElementById('plans-input');
 
     this.$gameOverBanner = document.getElementById('game-over-banner');
+    this.$plansProgressWrap  = document.getElementById('plans-progress-wrap');
+    this.$plansProgressBar   = document.getElementById('plans-progress-bar');
+    this.$plansProgressLabel = document.getElementById('plans-progress-label');
     this._moveHistory = [];  // [{san, fen_before, fen_after}]
     this._currentIdx  = -1;
 
@@ -295,6 +298,17 @@ class UI {
 
     // Render lines panel
     this._renderLines(lines);
+
+    // Plans progress bar
+    const pct2 = Math.round((stats.tasks / stats.total) * 100);
+    if (this.$plansProgressWrap) {
+      this.$plansProgressWrap.style.display = 'flex';
+      this.$plansProgressBar.style.width    = pct2 + '%';
+      this.$plansProgressLabel.textContent  = `${stats.tasks} / ${stats.total}`;
+      if (stats.final) {
+        setTimeout(() => { this.$plansProgressWrap.style.display = 'none'; }, 2000);
+      }
+    }
 
     // Stats
     this.$npsText.textContent  = `${(stats.nps / 1000).toFixed(0)}k nps`;
