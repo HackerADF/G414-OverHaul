@@ -20,6 +20,7 @@ class Board {
 
     this._drag      = null;         // drag state
     this._squares   = {};           // sq id → DOM element
+    this.showHeatMap = false;
 
     this._buildGrid();
     this._bindResize();
@@ -184,6 +185,9 @@ class Board {
     ctx.clearRect(0, 0, size, size);
 
     if (!this.analysisLines || !this.analysisLines.length) return;
+
+    // Optional heat-map underlay
+    if (this.showHeatMap) this._drawHeatMap(ctx, size, this.analysisLines);
 
     // Draw each line (up to the first 4 moves per line)
     this.analysisLines.forEach((line, idx) => {
