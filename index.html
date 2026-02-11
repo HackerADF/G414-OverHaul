@@ -75,6 +75,14 @@
 
     <div class="panel-card" style="flex:1; min-height:0; overflow:hidden; display:flex; flex-direction:column;">
       <h3>Analysis Lines <span id="lines-count" style="color:var(--accent)"></span></h3>
+      <div id="plans-progress-wrap" style="display:none; flex-direction:column; gap:2px;">
+        <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted);">
+          <span>Plans</span><span id="plans-progress-label">0 / 0</span>
+        </div>
+        <div style="height:4px; background:var(--surface2); border-radius:2px; overflow:hidden;">
+          <div id="plans-progress-bar" style="height:100%; background:var(--accent); width:0%; transition:width 0.3s;"></div>
+        </div>
+      </div>
       <div id="lines-list"></div>
     </div>
 
