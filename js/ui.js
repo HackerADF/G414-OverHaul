@@ -270,8 +270,15 @@ class UI {
 
       const score = document.createElement('span');
       score.className = 'line-score';
-      const s = (line.score / 100).toFixed(2);
-      score.textContent = line.score >= 0 ? `+${s}` : s;
+      let scoreText;
+      if (Math.abs(line.score) >= 29000) {
+        const mateIn = Math.ceil((30000 - Math.abs(line.score)) / 2);
+        scoreText = line.score > 0 ? `M${mateIn}` : `-M${mateIn}`;
+      } else {
+        const s = (line.score / 100).toFixed(2);
+        scoreText = line.score >= 0 ? `+${s}` : s;
+      }
+      score.textContent = scoreText;
       score.style.color = line.score > 50 ? '#4ade80'
                         : line.score < -50 ? '#f87171'
                         : 'var(--accent)';
