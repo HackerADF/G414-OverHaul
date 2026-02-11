@@ -156,6 +156,36 @@ function orderMoves(moves, chess) {
   });
 }
 
+/* ── Transposition Table ────────────────────────────────── */
+const TT_SIZE  = 1 << 16; // 65536 slots
+const ttTable  = new Array(TT_SIZE);
+const TT_EXACT = 0, TT_LOWER = 1, TT_UPPER = 2;
+
+function ttKey(fen) {
+  // Simple hash: sum of char codes mod TT_SIZE
+  let h = 0;
+  for (let i = 0; i < fen.length; i++) h = (h * 31 + fen.charCodeAt(i)) & (TT_SIZE - 1);
+  return h;
+}
+
+function ttGet(fen, depth, alpha, beta) {
+  const k = ttKey(fen);
+  const e = ttTable[k];
+  if (!e || e.fen !== fen || e.depth < depth) return null;
+  if (e.flag === TT_EXACT)                   return e.score;
+  if (e.flag === TT_LOWER && e.score >= beta) return e.score;
+  if (e.flag === TT_UPPER && e.score <= alpha) return e.score;
+  return null;
+}
+
+function ttSet(fen, depth, score, flag) {
+  const k = ttKey(fen);
+  const e = ttTable[k];
+  if (!e || e.depth <= depth) {
+    ttTable[k] = { fen, depth, score, flag };
+  }
+}
+
 /* ── Alpha-Beta Minimax ──────────────────────────────────── */
 const INFINITY = 9999999;
 let  _nodes = 0;
