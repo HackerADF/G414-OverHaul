@@ -49,6 +49,12 @@ class UI {
       this.setStatus('FEN copied to clipboard');
     });
 
+    document.getElementById('btn-copy-pgn').addEventListener('click', () => {
+      const pgn = this.chess.pgn({ max_width: 80, newline_char: '\n' });
+      navigator.clipboard.writeText(pgn).catch(() => {});
+      this.setStatus('PGN copied to clipboard');
+    });
+
     // Sliders
     this.$depthSlider.addEventListener('input', () => {
       this.$depthVal.textContent = this.$depthSlider.value;
