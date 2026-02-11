@@ -139,6 +139,40 @@ class Board {
     this._drawLines();
   }
 
+  /* ── Heat-map overlay ────────────────────────────────────── */
+  /**
+   * Build a frequency map of squares visited across all analysis lines.
+   * Returns {sq: count} where sq is algebraic notation.
+   */
+  _buildHeatMap(lines) {
+    const freq = {};
+    for (const line of lines) {
+      if (!line.moves) continue;
+      for (const san of line.moves) {
+        // Extract target square from SAN (last 2 chars if they are a square)
+        const sq = san.match(/([a-h][1-8])(?=[+#]|$)/)?.[1];
+        if (sq) freq[sq] = (freq[sq] || 0) + 1;
+      }
+    }
+    return freq;
+  }
+
+  _drawHeatMap(ctx, size, lines) {
+    const sqSize = size / 8;
+    const freq   = this._buildHeatMap(lines);
+    const max    = Math.max(1, ...Object.values(freq));
+
+    for (const [sq, count] of Object.entries(freq)) {
+      const [cx, cy] = this._sqCenter(sq, sqSize);
+      const alpha = (count / max) * 0.45;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = '#ff6600';
+      ctx.fillRect(cx - sqSize/2, cy - sqSize/2, sqSize, sqSize);
+      ctx.restore();
+    }
+  }
+
   /* ── Canvas Arrow Drawing ────────────────────────────────── */
   _drawLines() {
     const c = this.$canvas;
