@@ -229,6 +229,9 @@ class AnalysisCoordinator {
       });
     }
 
+    // Count how many plans support each root move
+    const planCount = new Map();
+
     // Enrich with level-1 and level-2 results
     for (const [, entry] of this._results) {
       const { task, result } = entry;
@@ -238,6 +241,9 @@ class AnalysisCoordinator {
       const rm   = task.rootMove;
       const best = result.lines[0];
       if (!rm || !best) continue;
+
+      // Track plan count for this root move
+      planCount.set(rm, (planCount.get(rm) || 0) + 1);
 
       const existing = lineMap.get(rm);
       const taskScore = task.moves.length === 1
@@ -261,8 +267,9 @@ class AnalysisCoordinator {
       }
     }
 
-    // Sort by score (best first)
+    // Attach plan counts and sort by score (best first)
     return Array.from(lineMap.values())
+      .map(line => ({ ...line, plans: planCount.get(line.rootMove) || 1 }))
       .sort((a, b) => b.score - a.score);
   }
 
