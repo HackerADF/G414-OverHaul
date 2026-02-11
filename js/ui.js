@@ -287,9 +287,15 @@ class UI {
       moves.className = 'line-moves';
       moves.textContent = line.moves.join(' ');
 
+      const plansBadge = document.createElement('span');
+      plansBadge.style.cssText = 'font-size:0.68rem;color:var(--text-muted);flex-shrink:0;align-self:center;';
+      plansBadge.title = `${line.plans || 1} analysis plan(s) for this move`;
+      plansBadge.textContent = `×${line.plans || 1}`;
+
       item.appendChild(dot);
       item.appendChild(score);
       item.appendChild(moves);
+      item.appendChild(plansBadge);
 
       item.addEventListener('click', () => {
         document.querySelectorAll('.line-item').forEach(el => el.classList.remove('active'));
