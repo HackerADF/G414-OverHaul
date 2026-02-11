@@ -26,6 +26,7 @@ class UI {
     this.$workersVal    = document.getElementById('workers-val');
     this.$plansInput    = document.getElementById('plans-input');
 
+    this.$gameOverBanner = document.getElementById('game-over-banner');
     this._moveHistory = [];  // [{san, fen_before, fen_after}]
     this._currentIdx  = -1;
 
@@ -82,6 +83,7 @@ class UI {
     this._currentIdx  = -1;
     this.board.lastMove = null;
     this.board.analysisLines = [];
+    this.$gameOverBanner?.classList.remove('show');
     this.board.render();
     this.renderMoveList();
     this.setStatus('New game started');
@@ -127,6 +129,15 @@ class UI {
     this.renderMoveList();
     this.$fenInput.value = this.chess.fen();
 
+    if (this.chess.game_over()) {
+      const msg = this._gameOverReason();
+      this.$gameOverBanner.textContent = msg;
+      this.$gameOverBanner.classList.add('show');
+      this.setStatus(msg);
+      return;
+    }
+
+    this.$gameOverBanner.classList.remove('show');
     // Auto-analyse after each move
     this.startAnalysis();
   }
