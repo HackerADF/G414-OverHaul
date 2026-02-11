@@ -210,7 +210,7 @@ class UI {
       onUpdate:    (lines, stats) => this._onAnalysisUpdate(lines, stats),
     });
 
-    this.setStatus(`Analysing… ${plans} concurrent plans`);
+    this.setStatus(`<span class="spinner"></span>Analysing… ${plans} concurrent plans`, true);
     this.coordinator.start(this.chess.fen());
   }
 
@@ -249,7 +249,7 @@ class UI {
         `NPS: ${(stats.nps/1000).toFixed(0)}k<br>` +
         `Time: ${stats.elapsed}s`;
     } else {
-      this.setStatus(`Analysing… ${pct}% (${stats.tasks}/${stats.total} plans)`);
+      this.setStatus(`<span class="spinner"></span>Analysing… ${pct}% (${stats.tasks}/${stats.total} plans)`, true);
     }
   }
 
@@ -295,8 +295,9 @@ class UI {
   }
 
   /* ── Helpers ──────────────────────────────────────────────── */
-  setStatus(msg) {
-    this.$statusText.textContent = msg;
+  setStatus(msg, html = false) {
+    if (html) this.$statusText.innerHTML = msg;
+    else      this.$statusText.textContent = msg;
   }
 
   _gameOverReason() {
