@@ -76,6 +76,11 @@ class UI {
     });
 
     document.getElementById('btn-play-engine').addEventListener('click', () => this.togglePlayVsEngine());
+    document.getElementById('btn-heatmap').addEventListener('click', e => {
+      this.board.showHeatMap = !this.board.showHeatMap;
+      e.target.classList.toggle('primary', this.board.showHeatMap);
+      this.board._drawLines();
+    });
 
     // Keyboard
     document.addEventListener('keydown', e => {
