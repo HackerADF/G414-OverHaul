@@ -151,6 +151,11 @@ function orderMoves(moves, chess, ply) {
       if (m.captured) s += PIECE_VALUE[m.captured] * 10 - PIECE_VALUE[m.piece];
       if (m.promotion) s += PIECE_VALUE[m.promotion] * 8;
       if (kSet.has(m.san)) s += 90;
+      // History bonus for quiet moves
+      if (!m.captured && !m.promotion) {
+        const hk = m.piece + m.to;
+        if (_histTable[hk]) s += Math.min(80, _histTable[hk] / 100);
+      }
       return s;
     };
     return scoreMove(b) - scoreMove(a);
@@ -194,6 +199,9 @@ let  _nodes = 0;
 /* Killer moves: up to 2 quiet moves that caused a beta cutoff at each ply */
 let _killers = [];
 
+/* History heuristic: tracks how often quiet moves caused cutoffs */
+let _histTable = {};
+
 function alphaBeta(chess, depth, alpha, beta, maximizing, ply) {
   _nodes++;
 
@@ -233,6 +241,9 @@ function alphaBeta(chess, depth, alpha, beta, maximizing, ply) {
           _killers[ply][1] = _killers[ply][0];
           _killers[ply][0] = move.san;
         }
+        // Update history table
+        const hk = move.piece + move.to;
+        _histTable[hk] = (_histTable[hk] || 0) + depth * depth;
       }
       break;
     }
@@ -284,6 +295,7 @@ function searchRoot(fen, depth, multiPV) {
 
   _nodes = 0;
   _killers = [];
+  _histTable = {};
   const rawMoves = chess.moves({ verbose: true });
   if (!rawMoves.length) return [];
 
