@@ -143,13 +143,14 @@ function evaluate(chess) {
 }
 
 /* ── Move ordering ───────────────────────────────────────── */
-function orderMoves(moves, chess) {
+function orderMoves(moves, chess, ply) {
+  const kSet = new Set((_killers[ply] || []).filter(Boolean));
   return moves.slice().sort((a, b) => {
     const scoreMove = m => {
       let s = 0;
       if (m.captured) s += PIECE_VALUE[m.captured] * 10 - PIECE_VALUE[m.piece];
       if (m.promotion) s += PIECE_VALUE[m.promotion] * 8;
-      if (chess.in_check()) s += 50;
+      if (kSet.has(m.san)) s += 90;
       return s;
     };
     return scoreMove(b) - scoreMove(a);
@@ -190,7 +191,10 @@ function ttSet(fen, depth, score, flag) {
 const INFINITY = 9999999;
 let  _nodes = 0;
 
-function alphaBeta(chess, depth, alpha, beta, maximizing, killers, history) {
+/* Killer moves: up to 2 quiet moves that caused a beta cutoff at each ply */
+let _killers = [];
+
+function alphaBeta(chess, depth, alpha, beta, maximizing, ply) {
   _nodes++;
 
   // Transposition table lookup
@@ -205,12 +209,13 @@ function alphaBeta(chess, depth, alpha, beta, maximizing, killers, history) {
   const rawMoves = chess.moves({ verbose: true });
   if (!rawMoves.length) return evaluate(chess);
 
-  const moves = orderMoves(rawMoves, chess);
+  const moves = orderMoves(rawMoves, chess, ply);
   let best = maximizing ? -INFINITY : INFINITY;
+  const origAlpha = alpha;
 
   for (const move of moves) {
     chess.move(move);
-    const score = alphaBeta(chess, depth - 1, alpha, beta, !maximizing, killers, history);
+    const score = alphaBeta(chess, depth - 1, alpha, beta, !maximizing, ply + 1);
     chess.undo();
 
     if (maximizing) {
@@ -220,12 +225,22 @@ function alphaBeta(chess, depth, alpha, beta, maximizing, killers, history) {
       if (score < best) best = score;
       if (score < beta)  beta = score;
     }
-    if (alpha >= beta) break;
+    if (alpha >= beta) {
+      // Store killer move for quiet beta cutoffs
+      if (!move.captured && !move.promotion) {
+        if (!_killers[ply]) _killers[ply] = [null, null];
+        if (_killers[ply][0] !== move.san) {
+          _killers[ply][1] = _killers[ply][0];
+          _killers[ply][0] = move.san;
+        }
+      }
+      break;
+    }
   }
 
   // Store in TT
-  const flag = best >= beta  ? TT_LOWER
-             : best <= alpha ? TT_UPPER
+  const flag = best >= beta   ? TT_LOWER
+             : best <= origAlpha ? TT_UPPER
              : TT_EXACT;
   ttSet(fen, depth, best, flag);
 
@@ -268,6 +283,7 @@ function searchRoot(fen, depth, multiPV) {
   const max   = turn === 'w';
 
   _nodes = 0;
+  _killers = [];
   const rawMoves = chess.moves({ verbose: true });
   if (!rawMoves.length) return [];
 
@@ -278,7 +294,7 @@ function searchRoot(fen, depth, multiPV) {
     let score = 0;
     // Iterative deepening on each root move
     for (let d = 1; d <= depth; d++) {
-      const s = alphaBeta(chess, d - 1, -INFINITY, INFINITY, !max, {}, {});
+      const s = alphaBeta(chess, d - 1, -INFINITY, INFINITY, !max, 0);
       // Stop early on forced mate
       if (Math.abs(s) >= 29000) { score = s; break; }
       score = s;
