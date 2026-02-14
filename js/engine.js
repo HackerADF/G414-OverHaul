@@ -157,7 +157,7 @@ function orderMoves(moves, chess) {
 }
 
 /* ── Transposition Table ────────────────────────────────── */
-const TT_SIZE  = 1 << 16; // 65536 slots
+const TT_SIZE  = 1 << 20; // 1,048,576 slots
 const ttTable  = new Array(TT_SIZE);
 const TT_EXACT = 0, TT_LOWER = 1, TT_UPPER = 2;
 
