@@ -221,9 +221,24 @@ function alphaBeta(chess, depth, alpha, beta, maximizing, ply) {
   let best = maximizing ? -INFINITY : INFINITY;
   const origAlpha = alpha;
 
-  for (const move of moves) {
+  for (let mi = 0; mi < moves.length; mi++) {
+    const move = moves[mi];
     chess.move(move);
-    const score = alphaBeta(chess, depth - 1, alpha, beta, !maximizing, ply + 1);
+
+    // Late-move reductions: reduce quiet moves after the first 3 at depth >= 3
+    const isQuiet = !move.captured && !move.promotion;
+    const inCheck = chess.in_check();
+    let score;
+    if (mi >= 3 && depth >= 3 && isQuiet && !inCheck) {
+      score = alphaBeta(chess, depth - 2, alpha, beta, !maximizing, ply + 1);
+      const needsResearch = maximizing ? score > alpha : score < beta;
+      if (needsResearch) {
+        score = alphaBeta(chess, depth - 1, alpha, beta, !maximizing, ply + 1);
+      }
+    } else {
+      score = alphaBeta(chess, depth - 1, alpha, beta, !maximizing, ply + 1);
+    }
+
     chess.undo();
 
     if (maximizing) {
