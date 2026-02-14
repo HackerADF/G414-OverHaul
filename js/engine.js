@@ -177,6 +177,14 @@ function evaluate(chess) {
     }
   }
 
+  // Doubled pawn penalty: -25cp per extra pawn on the same file
+  for (let f = 0; f < 8; f++) {
+    const wc = (wPawnFiles[f] || []).length;
+    const bc = (bPawnFiles[f] || []).length;
+    if (wc > 1) score -= (wc - 1) * 25;
+    if (bc > 1) score += (bc - 1) * 25;
+  }
+
   // Mobility bonus
   score += chess.moves().length * (chess.turn() === 'w' ? 2 : -2);
 
