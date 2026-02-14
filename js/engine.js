@@ -136,6 +136,47 @@ function evaluate(chess) {
     }
   }
 
+  // Build pawn file maps for structural evaluation
+  const wPawnFiles = {};
+  const bPawnFiles = {};
+  for (let r = 0; r < 8; r++) {
+    for (let f = 0; f < 8; f++) {
+      const p = board[r][f];
+      if (!p || p.type !== 'p') continue;
+      const rank = 8 - r; // board[0] = rank 8, so rank 1..8
+      if (p.color === 'w') {
+        if (!wPawnFiles[f]) wPawnFiles[f] = [];
+        wPawnFiles[f].push(rank);
+      } else {
+        if (!bPawnFiles[f]) bPawnFiles[f] = [];
+        bPawnFiles[f].push(rank);
+      }
+    }
+  }
+
+  // Passed pawn bonus (scaled by rank proximity to promotion)
+  const passedBonus = [0, 0, 10, 20, 35, 55, 80, 120];
+  for (let f = 0; f < 8; f++) {
+    for (const rank of (wPawnFiles[f] || [])) {
+      let passed = true;
+      for (let df = -1; df <= 1; df++) {
+        const bf = f + df;
+        if (bf < 0 || bf > 7) continue;
+        if ((bPawnFiles[bf] || []).some(br => br > rank)) { passed = false; break; }
+      }
+      if (passed) score += passedBonus[rank] || 0;
+    }
+    for (const rank of (bPawnFiles[f] || [])) {
+      let passed = true;
+      for (let df = -1; df <= 1; df++) {
+        const bf = f + df;
+        if (bf < 0 || bf > 7) continue;
+        if ((wPawnFiles[bf] || []).some(wr => wr < rank)) { passed = false; break; }
+      }
+      if (passed) score -= passedBonus[9 - rank] || 0; // mirror for black
+    }
+  }
+
   // Mobility bonus
   score += chess.moves().length * (chess.turn() === 'w' ? 2 : -2);
 
