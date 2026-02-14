@@ -185,6 +185,14 @@ function evaluate(chess) {
     if (bc > 1) score += (bc - 1) * 25;
   }
 
+  // Isolated pawn penalty: -20cp per pawn with no friendly pawns on adjacent files
+  for (let f = 0; f < 8; f++) {
+    const wc = (wPawnFiles[f] || []).length;
+    const bc = (bPawnFiles[f] || []).length;
+    if (wc > 0 && !wPawnFiles[f - 1] && !wPawnFiles[f + 1]) score -= wc * 20;
+    if (bc > 0 && !bPawnFiles[f - 1] && !bPawnFiles[f + 1]) score += bc * 20;
+  }
+
   // Mobility bonus
   score += chess.moves().length * (chess.turn() === 'w' ? 2 : -2);
 
