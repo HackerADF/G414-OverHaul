@@ -185,6 +185,21 @@ function evaluate(chess) {
     if (bc > 1) score += (bc - 1) * 25;
   }
 
+  // Rook bonus: +25cp on open file (no pawns), +12cp on semi-open (no own pawns)
+  for (let r = 0; r < 8; r++) {
+    for (let f = 0; f < 8; f++) {
+      const p = board[r][f];
+      if (!p || p.type !== 'r') continue;
+      const ownPawns = p.color === 'w' ? (wPawnFiles[f] || []) : (bPawnFiles[f] || []);
+      const oppPawns = p.color === 'w' ? (bPawnFiles[f] || []) : (wPawnFiles[f] || []);
+      if (ownPawns.length === 0 && oppPawns.length === 0) {
+        if (p.color === 'w') score += 25; else score -= 25; // open file
+      } else if (ownPawns.length === 0) {
+        if (p.color === 'w') score += 12; else score -= 12; // semi-open file
+      }
+    }
+  }
+
   // Isolated pawn penalty: -20cp per pawn with no friendly pawns on adjacent files
   for (let f = 0; f < 8; f++) {
     const wc = (wPawnFiles[f] || []).length;
