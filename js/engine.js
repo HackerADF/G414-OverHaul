@@ -246,6 +246,15 @@ function orderMoves(moves, chess, ply) {
   });
 }
 
+/* ── Null-move FEN helper ────────────────────────────────── */
+function makeNullMoveFen(fen) {
+  const parts = fen.split(' ');
+  parts[1] = parts[1] === 'w' ? 'b' : 'w'; // swap side to move
+  parts[3] = '-';                           // clear en passant
+  parts[4] = String(parseInt(parts[4]) + 1);
+  return parts.join(' ');
+}
+
 /* ── Transposition Table ────────────────────────────────── */
 const TT_SIZE  = 1 << 20; // 1,048,576 slots
 const ttTable  = new Array(TT_SIZE);
@@ -301,9 +310,23 @@ function alphaBeta(chess, depth, alpha, beta, maximizing, ply) {
   const rawMoves = chess.moves({ verbose: true });
   if (!rawMoves.length) return evaluate(chess);
 
+  // Null-move pruning: pass our turn; if opponent still can't beat beta, prune
+  const NMP_R = 3;
+  const inCheckNow = chess.in_check();
+  if (!inCheckNow && depth >= NMP_R + 1) {
+    const nullFen = makeNullMoveFen(chess.fen());
+    try {
+      const nullChess = new Chess(nullFen);
+      if (!nullChess.in_check()) { // legal null-move position
+        const ns = alphaBeta(nullChess, depth - 1 - NMP_R, alpha, beta, !maximizing, ply + 1);
+        if (maximizing && ns >= beta) return beta;
+        if (!maximizing && ns <= alpha) return alpha;
+      }
+    } catch (_) {}
+  }
+
   // Futility pruning: at low depths, skip quiet moves that cannot improve alpha
   const FUTILITY_MARGIN = [0, 150, 300];
-  const inCheckNow = chess.in_check();
   let staticEval = null;
   if (!inCheckNow && depth <= 2) staticEval = evaluate(chess);
 
