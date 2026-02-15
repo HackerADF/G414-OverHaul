@@ -100,6 +100,7 @@ function evaluate(chess) {
 
   let score = 0;
   let wMat = 0, bMat = 0;
+  let wBishops = 0, bBishops = 0;
   const board = chess.board();
 
   for (let r = 0; r < 8; r++) {
@@ -116,8 +117,16 @@ function evaluate(chess) {
 
       if (p.color === 'w') { wMat += val; score += val + pst; }
       else                  { bMat += val; score -= val + pst; }
+
+      if (p.type === 'b') {
+        if (p.color === 'w') wBishops++; else bBishops++;
+      }
     }
   }
+
+  // Bishop pair bonus: +30cp for controlling both colour complexes
+  if (wBishops >= 2) score += 30;
+  if (bBishops >= 2) score -= 30;
 
   // King safety: blend between middle-game and end-game PST
   const totalMat = wMat + bMat - PIECE_VALUE.k * 2;
