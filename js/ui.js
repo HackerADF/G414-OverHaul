@@ -33,6 +33,11 @@ class UI {
     this._moveHistory = [];  // [{san, fen_before, fen_after}]
     this._currentIdx  = -1;
 
+    this._svsActive   = false;
+    this._svsTimer    = null;
+    this._svsMoveCount = 0;
+    this._svsStats    = { w: 0, b: 0, d: 0, games: 0 };
+
     this._bindControls();
   }
 
@@ -76,6 +81,7 @@ class UI {
     });
 
     document.getElementById('btn-play-engine').addEventListener('click', () => this.togglePlayVsEngine());
+    document.getElementById('btn-svs').addEventListener('click', () => this.toggleSelfVsSelf());
     document.getElementById('btn-heatmap').addEventListener('click', e => {
       this.board.showHeatMap = !this.board.showHeatMap;
       e.target.classList.toggle('primary', this.board.showHeatMap);
@@ -160,6 +166,9 @@ class UI {
       return;
     }
 
+    // SVS mode handles its own scheduling
+    if (this._svsActive) return;
+
     // Auto-analyse after each move
     this.startAnalysis();
   }
@@ -227,6 +236,75 @@ class UI {
     for (let i = 0; i <= idx; i++) chess.move(h[i]);
     this.chess.load(chess.fen());
     this.board.render();
+  }
+
+  /* ── Self vs Self ─────────────────────────────────────────── */
+  toggleSelfVsSelf() {
+    this._svsActive = !this._svsActive;
+    const btn = document.getElementById('btn-svs');
+    const panel = document.getElementById('svs-panel');
+    if (this._svsActive) {
+      btn.textContent = '⏹ Stop SVS';
+      btn.classList.add('primary');
+      if (panel) panel.style.display = '';
+      this._svsMoveCount = 0;
+      this.stopAnalysis();
+      this._svsNext();
+    } else {
+      btn.textContent = '⚙ Self vs Self';
+      btn.classList.remove('primary');
+      if (this._svsTimer) { clearTimeout(this._svsTimer); this._svsTimer = null; }
+    }
+  }
+
+  _svsNext() {
+    if (!this._svsActive) return;
+    if (this.chess.game_over()) { this._svsOnGameOver(); return; }
+    const delay = parseInt(document.getElementById('svs-delay')?.value || '500');
+    this._svsTimer = setTimeout(() => this._svsMakeMove(), delay);
+  }
+
+  _svsMakeMove() {
+    if (!this._svsActive) return;
+    const turn = this.chess.turn();
+    const fen   = this.chess.fen();
+    const depth = parseInt(this.$depthSlider.value);
+    const w = new Worker('js/worker.js');
+    w.onmessage = e => {
+      w.terminate();
+      if (!this._svsActive) return;
+      const lines = e.data.lines;
+      if (!lines?.length) return;
+      const best = lines[0].move;
+      if (!best) return;
+      this._svsMoveCount++;
+      this.onMove(best.from, best.to, best.promotion || null);
+      if (!this.chess.game_over()) this._svsNext();
+    };
+    w.postMessage({ fen, depth, multiPV: 1, taskId: 'svs' });
+  }
+
+  _svsOnGameOver() {
+    const isCheckmate = this.chess.in_checkmate();
+    this._svsStats.games++;
+    if (isCheckmate) {
+      if (this.chess.turn() === 'w') this._svsStats.b++;
+      else                           this._svsStats.w++;
+    } else {
+      this._svsStats.d++;
+    }
+    this._updateSvsStats();
+  }
+
+  _updateSvsStats() {
+    const el = document.getElementById('svs-stats');
+    if (!el) return;
+    const s = this._svsStats;
+    el.innerHTML =
+      `Games: ${s.games}<br>` +
+      `White wins: ${s.w}<br>` +
+      `Black wins: ${s.b}<br>` +
+      `Draws: ${s.d}`;
   }
 
   /* ── Play vs Engine ───────────────────────────────────────── */
