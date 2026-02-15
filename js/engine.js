@@ -301,12 +301,25 @@ function alphaBeta(chess, depth, alpha, beta, maximizing, ply) {
   const rawMoves = chess.moves({ verbose: true });
   if (!rawMoves.length) return evaluate(chess);
 
+  // Futility pruning: at low depths, skip quiet moves that cannot improve alpha
+  const FUTILITY_MARGIN = [0, 150, 300];
+  const inCheckNow = chess.in_check();
+  let staticEval = null;
+  if (!inCheckNow && depth <= 2) staticEval = evaluate(chess);
+
   const moves = orderMoves(rawMoves, chess, ply);
   let best = maximizing ? -INFINITY : INFINITY;
   const origAlpha = alpha;
 
   for (let mi = 0; mi < moves.length; mi++) {
     const move = moves[mi];
+
+    // Skip quiet moves that statically cannot reach alpha
+    if (staticEval !== null && !move.captured && !move.promotion) {
+      if (maximizing && staticEval + FUTILITY_MARGIN[depth] <= alpha) continue;
+      if (!maximizing && staticEval - FUTILITY_MARGIN[depth] >= beta) continue;
+    }
+
     chess.move(move);
 
     // Late-move reductions: reduce quiet moves after the first 3 at depth >= 3
