@@ -383,8 +383,15 @@ function quiescence(chess, alpha, beta, maximizing) {
     if (stand < beta) beta = stand;
   }
 
+  const DELTA = 200; // delta pruning margin
   const captures = chess.moves({ verbose: true }).filter(m => m.captured || m.promotion);
   for (const move of captures) {
+    // Delta pruning: skip captures whose maximum gain cannot reach alpha
+    if (move.captured) {
+      const gain = PIECE_VALUE[move.captured];
+      if (maximizing  && stand + gain + DELTA < alpha) continue;
+      if (!maximizing && stand - gain - DELTA > beta)  continue;
+    }
     chess.move(move);
     const score = quiescence(chess, alpha, beta, !maximizing);
     chess.undo();
