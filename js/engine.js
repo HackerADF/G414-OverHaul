@@ -217,6 +217,9 @@ function evaluate(chess) {
     if (bc > 0 && !bPawnFiles[f - 1] && !bPawnFiles[f + 1]) score += bc * 20;
   }
 
+  // Tempo bonus: the side to move has a small initiative advantage
+  score += chess.turn() === 'w' ? 10 : -10;
+
   // Mobility bonus
   score += chess.moves().length * (chess.turn() === 'w' ? 2 : -2);
 
