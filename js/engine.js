@@ -94,7 +94,7 @@ function sqIdx(sq, color) {
 }
 
 /* ── Evaluate position (centipawns, positive = white better) ─ */
-function evaluate(chess) {
+function evaluate(chess, skipMobility = false) {
   if (chess.in_checkmate()) return chess.turn() === 'w' ? -30000 : 30000;
   if (chess.in_draw() || chess.in_stalemate() || chess.in_threefold_repetition()) return 0;
 
@@ -175,8 +175,10 @@ function evaluate(chess) {
   // Tempo bonus: the side to move has a small initiative advantage
   score += chess.turn() === 'w' ? 10 : -10;
 
-  // Mobility bonus
-  score += chess.moves().length * (chess.turn() === 'w' ? 2 : -2);
+  // Mobility bonus (skipped in quiescence to reduce legal-move generation overhead)
+  if (!skipMobility) {
+    score += chess.moves().length * (chess.turn() === 'w' ? 2 : -2);
+  }
 
   return score;
 }
@@ -436,7 +438,7 @@ function alphaBeta(chess, depth, alpha, beta, maximizing, ply) {
 /* ── Quiescence Search ───────────────────────────────────── */
 function quiescence(chess, alpha, beta, maximizing) {
   _nodes++;
-  const stand = evaluate(chess);
+  const stand = evaluate(chess, true); // skip mobility for speed
 
   if (maximizing) {
     if (stand >= beta) return beta;
