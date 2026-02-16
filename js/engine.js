@@ -1,10 +1,18 @@
 /**
  * engine.js – Alpha-beta minimax chess engine with:
- *   • Iterative deepening
- *   • Null-move pruning
- *   • Move ordering (captures, killers, history heuristic)
+ *   • Iterative deepening with aspiration windows
+ *   • Null-move pruning (R=3)
+ *   • Late-move reductions (LMR)
+ *   • Futility pruning + delta pruning in quiescence
+ *   • Check extensions (depth ≤ 2)
+ *   • Move ordering: MVV/LVA, killers, history heuristic
+ *   • 1M-slot transposition table
  *   • Piece-square tables (opening + endgame blended by phase)
- *   • Material + mobility + pawn structure evaluation
+ *   • Material + mobility + pawn structure evaluation:
+ *     – Passed pawns, doubled pawns, isolated pawns
+ *     – Rook on open/semi-open file
+ *     – Bishop pair bonus, tempo bonus
+ *     – Pawn shield king safety
  *   • Multi-PV (return N best root moves)
  */
 
