@@ -79,6 +79,10 @@ class UI {
     this.$workersSlider.addEventListener('input', () => {
       this.$workersVal.textContent = this.$workersSlider.value;
     });
+    document.getElementById('svs-delay')?.addEventListener('input', e => {
+      const label = document.getElementById('svs-delay-val');
+      if (label) label.textContent = e.target.value;
+    });
 
     document.getElementById('btn-play-engine').addEventListener('click', () => this.togglePlayVsEngine());
     document.getElementById('btn-svs').addEventListener('click', () => this.toggleSelfVsSelf());
@@ -294,6 +298,16 @@ class UI {
       this._svsStats.d++;
     }
     this._updateSvsStats();
+
+    // Auto-restart a new game after a short pause if checkbox is ticked
+    const autoRestart = document.getElementById('svs-auto-restart')?.checked;
+    if (autoRestart && this._svsActive) {
+      this._svsTimer = setTimeout(() => {
+        this.newGame();
+        this._svsMoveCount = 0;
+        this._svsNext();
+      }, 2000);
+    }
   }
 
   _updateSvsStats() {
