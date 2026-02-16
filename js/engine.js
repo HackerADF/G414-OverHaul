@@ -372,18 +372,21 @@ function alphaBeta(chess, depth, alpha, beta, maximizing, ply) {
 
     chess.move(move);
 
+    // Check extension: add one extra ply when the move gives check
+    const givesCheck = chess.in_check();
+    const ext = (depth <= 2 && givesCheck) ? 1 : 0;
+
     // Late-move reductions: reduce quiet moves after the first 3 at depth >= 3
     const isQuiet = !move.captured && !move.promotion;
-    const inCheck = chess.in_check();
     let score;
-    if (mi >= 3 && depth >= 3 && isQuiet && !inCheck) {
-      score = alphaBeta(chess, depth - 2, alpha, beta, !maximizing, ply + 1);
+    if (mi >= 3 && depth >= 3 && isQuiet && !givesCheck) {
+      score = alphaBeta(chess, depth - 2 + ext, alpha, beta, !maximizing, ply + 1);
       const needsResearch = maximizing ? score > alpha : score < beta;
       if (needsResearch) {
-        score = alphaBeta(chess, depth - 1, alpha, beta, !maximizing, ply + 1);
+        score = alphaBeta(chess, depth - 1 + ext, alpha, beta, !maximizing, ply + 1);
       }
     } else {
-      score = alphaBeta(chess, depth - 1, alpha, beta, !maximizing, ply + 1);
+      score = alphaBeta(chess, depth - 1 + ext, alpha, beta, !maximizing, ply + 1);
     }
 
     chess.undo();
