@@ -169,80 +169,8 @@ function evaluate(chess) {
     }
   }
 
-  // Passed pawn bonus (scaled by rank proximity to promotion)
-  const passedBonus = [0, 0, 10, 20, 35, 55, 80, 120];
-  for (let f = 0; f < 8; f++) {
-    for (const rank of (wPawnFiles[f] || [])) {
-      let passed = true;
-      for (let df = -1; df <= 1; df++) {
-        const bf = f + df;
-        if (bf < 0 || bf > 7) continue;
-        if ((bPawnFiles[bf] || []).some(br => br > rank)) { passed = false; break; }
-      }
-      if (passed) score += passedBonus[rank] || 0;
-    }
-    for (const rank of (bPawnFiles[f] || [])) {
-      let passed = true;
-      for (let df = -1; df <= 1; df++) {
-        const bf = f + df;
-        if (bf < 0 || bf > 7) continue;
-        if ((wPawnFiles[bf] || []).some(wr => wr < rank)) { passed = false; break; }
-      }
-      if (passed) score -= passedBonus[9 - rank] || 0; // mirror for black
-    }
-  }
-
-  // Doubled pawn penalty: -25cp per extra pawn on the same file
-  for (let f = 0; f < 8; f++) {
-    const wc = (wPawnFiles[f] || []).length;
-    const bc = (bPawnFiles[f] || []).length;
-    if (wc > 1) score -= (wc - 1) * 25;
-    if (bc > 1) score += (bc - 1) * 25;
-  }
-
-  // Rook bonus: +25cp on open file (no pawns), +12cp on semi-open (no own pawns)
-  for (let r = 0; r < 8; r++) {
-    for (let f = 0; f < 8; f++) {
-      const p = board[r][f];
-      if (!p || p.type !== 'r') continue;
-      const ownPawns = p.color === 'w' ? (wPawnFiles[f] || []) : (bPawnFiles[f] || []);
-      const oppPawns = p.color === 'w' ? (bPawnFiles[f] || []) : (wPawnFiles[f] || []);
-      if (ownPawns.length === 0 && oppPawns.length === 0) {
-        if (p.color === 'w') score += 25; else score -= 25; // open file
-      } else if (ownPawns.length === 0) {
-        if (p.color === 'w') score += 12; else score -= 12; // semi-open file
-      }
-    }
-  }
-
-  // Isolated pawn penalty: -20cp per pawn with no friendly pawns on adjacent files
-  for (let f = 0; f < 8; f++) {
-    const wc = (wPawnFiles[f] || []).length;
-    const bc = (bPawnFiles[f] || []).length;
-    if (wc > 0 && !wPawnFiles[f - 1] && !wPawnFiles[f + 1]) score -= wc * 20;
-    if (bc > 0 && !bPawnFiles[f - 1] && !bPawnFiles[f + 1]) score += bc * 20;
-  }
-
-  // Pawn shield bonus: reward pawns directly in front of the king (middlegame only)
-  if (endgameW < 0.6) {
-    const shieldMg = Math.round(8 * (1 - endgameW));
-    if (wKingFile >= 0) {
-      for (let df = -1; df <= 1; df++) {
-        const sf = wKingFile + df;
-        if (sf < 0 || sf > 7) continue;
-        const ranks = wPawnFiles[sf] || [];
-        if (ranks.some(rk => rk === wKingRank + 1 || rk === wKingRank + 2)) score += shieldMg;
-      }
-    }
-    if (bKingFile >= 0) {
-      for (let df = -1; df <= 1; df++) {
-        const sf = bKingFile + df;
-        if (sf < 0 || sf > 7) continue;
-        const ranks = bPawnFiles[sf] || [];
-        if (ranks.some(rk => rk === bKingRank - 1 || rk === bKingRank - 2)) score -= shieldMg;
-      }
-    }
-  }
+  // Pawn structure + rook files + pawn shield
+  score += pawnEval(board, wPawnFiles, bPawnFiles, wKingFile, wKingRank, bKingFile, bKingRank, endgameW);
 
   // Tempo bonus: the side to move has a small initiative advantage
   score += chess.turn() === 'w' ? 10 : -10;
@@ -251,6 +179,88 @@ function evaluate(chess) {
   score += chess.moves().length * (chess.turn() === 'w' ? 2 : -2);
 
   return score;
+}
+
+/* ── Pawn structure evaluation ───────────────────────────── */
+function pawnEval(board, wPawnFiles, bPawnFiles, wKingFile, wKingRank, bKingFile, bKingRank, endgameW) {
+  let s = 0;
+  const passedBonus = [0, 0, 10, 20, 35, 55, 80, 120];
+
+  // Passed pawn bonus
+  for (let f = 0; f < 8; f++) {
+    for (const rank of (wPawnFiles[f] || [])) {
+      let passed = true;
+      for (let df = -1; df <= 1; df++) {
+        const bf = f + df;
+        if (bf < 0 || bf > 7) continue;
+        if ((bPawnFiles[bf] || []).some(br => br > rank)) { passed = false; break; }
+      }
+      if (passed) s += passedBonus[rank] || 0;
+    }
+    for (const rank of (bPawnFiles[f] || [])) {
+      let passed = true;
+      for (let df = -1; df <= 1; df++) {
+        const bf = f + df;
+        if (bf < 0 || bf > 7) continue;
+        if ((wPawnFiles[bf] || []).some(wr => wr < rank)) { passed = false; break; }
+      }
+      if (passed) s -= passedBonus[9 - rank] || 0;
+    }
+  }
+
+  // Doubled pawn penalty
+  for (let f = 0; f < 8; f++) {
+    const wc = (wPawnFiles[f] || []).length;
+    const bc = (bPawnFiles[f] || []).length;
+    if (wc > 1) s -= (wc - 1) * 25;
+    if (bc > 1) s += (bc - 1) * 25;
+  }
+
+  // Rook on open / semi-open file
+  for (let r = 0; r < 8; r++) {
+    for (let f = 0; f < 8; f++) {
+      const p = board[r][f];
+      if (!p || p.type !== 'r') continue;
+      const own = p.color === 'w' ? (wPawnFiles[f] || []) : (bPawnFiles[f] || []);
+      const opp = p.color === 'w' ? (bPawnFiles[f] || []) : (wPawnFiles[f] || []);
+      if (own.length === 0 && opp.length === 0) {
+        if (p.color === 'w') s += 25; else s -= 25;
+      } else if (own.length === 0) {
+        if (p.color === 'w') s += 12; else s -= 12;
+      }
+    }
+  }
+
+  // Isolated pawn penalty
+  for (let f = 0; f < 8; f++) {
+    const wc = (wPawnFiles[f] || []).length;
+    const bc = (bPawnFiles[f] || []).length;
+    if (wc > 0 && !wPawnFiles[f - 1] && !wPawnFiles[f + 1]) s -= wc * 20;
+    if (bc > 0 && !bPawnFiles[f - 1] && !bPawnFiles[f + 1]) s += bc * 20;
+  }
+
+  // Pawn shield (middlegame only)
+  if (endgameW < 0.6) {
+    const shieldMg = Math.round(8 * (1 - endgameW));
+    if (wKingFile >= 0) {
+      for (let df = -1; df <= 1; df++) {
+        const sf = wKingFile + df;
+        if (sf < 0 || sf > 7) continue;
+        const ranks = wPawnFiles[sf] || [];
+        if (ranks.some(rk => rk === wKingRank + 1 || rk === wKingRank + 2)) s += shieldMg;
+      }
+    }
+    if (bKingFile >= 0) {
+      for (let df = -1; df <= 1; df++) {
+        const sf = bKingFile + df;
+        if (sf < 0 || sf > 7) continue;
+        const ranks = bPawnFiles[sf] || [];
+        if (ranks.some(rk => rk === bKingRank - 1 || rk === bKingRank - 2)) s -= shieldMg;
+      }
+    }
+  }
+
+  return s;
 }
 
 /* ── Move ordering ───────────────────────────────────────── */
