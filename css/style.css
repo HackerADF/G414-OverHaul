@@ -441,6 +441,11 @@ body.light {
 }
 #game-over-banner.show { display: block; }
 
+/* ── Self-vs-Self board indicator ────────────────────────── */
+#board.svs-active { transition: box-shadow 0.35s ease; }
+#board.svs-white  { box-shadow: 0 0 0 3px var(--sq-light), 0 0 12px 2px rgba(240,217,181,0.35); }
+#board.svs-black  { box-shadow: 0 0 0 3px var(--sq-dark),  0 0 12px 2px rgba(181,136,99,0.35); }
+
 /* ── Responsive ───────────────────────────────────────────── */
 @media (max-width: 900px) {
   #app {

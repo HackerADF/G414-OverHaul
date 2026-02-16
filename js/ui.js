@@ -258,6 +258,7 @@ class UI {
       btn.textContent = '⚙ Self vs Self';
       btn.classList.remove('primary');
       if (this._svsTimer) { clearTimeout(this._svsTimer); this._svsTimer = null; }
+      this.board.setSvsIndicator(false, null);
     }
   }
 
@@ -273,6 +274,7 @@ class UI {
     const turn = this.chess.turn();
     const sideName = turn === 'w' ? 'White' : 'Black';
     const moveNum  = Math.floor(this._svsMoveCount / 2) + 1;
+    this.board.setSvsIndicator(true, turn);
     this.setStatus(
       `<span class="spinner"></span>SVS – Move ${moveNum}: ${sideName} thinking…`, true
     );

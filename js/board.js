@@ -423,6 +423,13 @@ class Board {
     this.$evalScore.textContent = centipawns >= 0 ? `+${score}` : score;
   }
 
+  /** Highlight board border to show which side is thinking in SVS mode */
+  setSvsIndicator(active, turn) {
+    this.$board.classList.toggle('svs-active', active);
+    this.$board.classList.toggle('svs-white',  active && turn === 'w');
+    this.$board.classList.toggle('svs-black',  active && turn === 'b');
+  }
+
   /* ── Resize handler ───────────────────────────────────────── */
   _bindResize() {
     const ro = new ResizeObserver(() => this._drawLines());
