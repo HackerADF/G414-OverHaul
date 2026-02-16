@@ -97,6 +97,7 @@ class UI {
       if (e.key === 'ArrowLeft')  this.goBack();
       if (e.key === 'ArrowRight') this.goForward();
       if (e.key === 'f') this.board.flip();
+      if (e.key === 's') this.toggleSelfVsSelf();
     });
   }
 
