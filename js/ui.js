@@ -319,11 +319,19 @@ class UI {
     const el = document.getElementById('svs-stats');
     if (!el) return;
     const s = this._svsStats;
+    const wPct = s.games ? ((s.w / s.games) * 100).toFixed(0) : 0;
+    const bPct = s.games ? ((s.b / s.games) * 100).toFixed(0) : 0;
+    const dPct = s.games ? ((s.d / s.games) * 100).toFixed(0) : 0;
     el.innerHTML =
       `Games: ${s.games}<br>` +
-      `White wins: ${s.w}<br>` +
-      `Black wins: ${s.b}<br>` +
-      `Draws: ${s.d}`;
+      `White wins: ${s.w} (${wPct}%)<br>` +
+      `Black wins: ${s.b} (${bPct}%)<br>` +
+      `Draws: ${s.d} (${dPct}%)`;
+    // Also show in engine info panel
+    this.$engineInfo.innerHTML =
+      `<strong>Self vs Self stats</strong><br>` +
+      `Games: ${s.games} &nbsp;|&nbsp; ` +
+      `W: ${s.w} &nbsp;|&nbsp; B: ${s.b} &nbsp;|&nbsp; D: ${s.d}`;
   }
 
   /* ── Play vs Engine ───────────────────────────────────────── */
