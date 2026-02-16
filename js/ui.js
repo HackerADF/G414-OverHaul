@@ -102,7 +102,7 @@ class UI {
   }
 
   /* ── Game actions ─────────────────────────────────────────── */
-  newGame() {
+  newGame(keepSvsStats = false) {
     this.stopAnalysis();
     this.chess.reset();
     this._moveHistory = [];
@@ -117,7 +117,7 @@ class UI {
     this.$fenInput.value = this.chess.fen();
     this.$linesList.innerHTML = '';
     this.$linesCount.textContent = '';
-    this.$engineInfo.innerHTML = '';
+    if (!keepSvsStats) this.$engineInfo.innerHTML = '';
   }
 
   loadFen(fen) {
@@ -311,7 +311,7 @@ class UI {
     const autoRestart = document.getElementById('svs-auto-restart')?.checked;
     if (autoRestart && this._svsActive) {
       this._svsTimer = setTimeout(() => {
-        this.newGame();
+        this.newGame(true); // keep SVS stats in engine info
         this._svsMoveCount = 0;
         this._svsNext();
       }, 2000);
