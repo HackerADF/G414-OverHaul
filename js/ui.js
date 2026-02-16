@@ -271,6 +271,11 @@ class UI {
   _svsMakeMove() {
     if (!this._svsActive) return;
     const turn = this.chess.turn();
+    const sideName = turn === 'w' ? 'White' : 'Black';
+    const moveNum  = Math.floor(this._svsMoveCount / 2) + 1;
+    this.setStatus(
+      `<span class="spinner"></span>SVS – Move ${moveNum}: ${sideName} thinking…`, true
+    );
     const fen   = this.chess.fen();
     const depth = parseInt(this.$depthSlider.value);
     const w = new Worker('js/worker.js');
