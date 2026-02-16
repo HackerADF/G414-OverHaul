@@ -101,6 +101,8 @@ function evaluate(chess) {
   let score = 0;
   let wMat = 0, bMat = 0;
   let wBishops = 0, bBishops = 0;
+  let wKingFile = -1, wKingRank = -1;
+  let bKingFile = -1, bKingRank = -1;
   const board = chess.board();
 
   for (let r = 0; r < 8; r++) {
@@ -120,6 +122,10 @@ function evaluate(chess) {
 
       if (p.type === 'b') {
         if (p.color === 'w') wBishops++; else bBishops++;
+      }
+      if (p.type === 'k') {
+        if (p.color === 'w') { wKingFile = f; wKingRank = 8 - r; }
+        else                  { bKingFile = f; bKingRank = 8 - r; }
       }
     }
   }
@@ -215,6 +221,27 @@ function evaluate(chess) {
     const bc = (bPawnFiles[f] || []).length;
     if (wc > 0 && !wPawnFiles[f - 1] && !wPawnFiles[f + 1]) score -= wc * 20;
     if (bc > 0 && !bPawnFiles[f - 1] && !bPawnFiles[f + 1]) score += bc * 20;
+  }
+
+  // Pawn shield bonus: reward pawns directly in front of the king (middlegame only)
+  if (endgameW < 0.6) {
+    const shieldMg = Math.round(8 * (1 - endgameW));
+    if (wKingFile >= 0) {
+      for (let df = -1; df <= 1; df++) {
+        const sf = wKingFile + df;
+        if (sf < 0 || sf > 7) continue;
+        const ranks = wPawnFiles[sf] || [];
+        if (ranks.some(rk => rk === wKingRank + 1 || rk === wKingRank + 2)) score += shieldMg;
+      }
+    }
+    if (bKingFile >= 0) {
+      for (let df = -1; df <= 1; df++) {
+        const sf = bKingFile + df;
+        if (sf < 0 || sf > 7) continue;
+        const ranks = bPawnFiles[sf] || [];
+        if (ranks.some(rk => rk === bKingRank - 1 || rk === bKingRank - 2)) score -= shieldMg;
+      }
+    }
   }
 
   // Tempo bonus: the side to move has a small initiative advantage
