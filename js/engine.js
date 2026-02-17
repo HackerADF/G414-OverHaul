@@ -3,7 +3,7 @@
  *   • Iterative deepening with aspiration windows
  *   • Null-move pruning (R=3)
  *   • Late-move reductions (LMR) with log-based depth/move-index table
- *   • Futility pruning + delta pruning in quiescence
+ *   • Razoring (depth ≤ 2) + futility pruning + delta pruning in quiescence
  *   • Check extensions (depth ≤ 2)
  *   • Move ordering: MVV/LVA, killers (from+to key), history heuristic with gravity decay
  *   • PVS (Principal Variation Search) with null-window re-search
@@ -459,10 +459,19 @@ function alphaBeta(chess, depth, alpha, beta, maximizing, ply) {
     } catch (_) {}
   }
 
+  // Razoring: if static eval is far below alpha at depth 1-2, skip directly to QS
+  const RAZOR_MARGIN = [0, 200, 350];
+  let staticEval = null;
+  if (!inCheckNow && depth <= 2) {
+    staticEval = evaluate(chess);
+    if (maximizing && depth >= 1 && staticEval + RAZOR_MARGIN[depth] < alpha) {
+      const qsScore = quiescence(chess, alpha - 1, alpha, maximizing);
+      if (qsScore < alpha) return qsScore;
+    }
+  }
+
   // Futility pruning: at low depths, skip quiet moves that cannot improve alpha
   const FUTILITY_MARGIN = [0, 150, 300];
-  let staticEval = null;
-  if (!inCheckNow && depth <= 2) staticEval = evaluate(chess);
 
   const moves = orderMoves(rawMoves, chess, ply);
   let best = maximizing ? -INFINITY : INFINITY;
