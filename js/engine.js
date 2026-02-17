@@ -477,20 +477,29 @@ function alphaBeta(chess, depth, alpha, beta, maximizing, ply) {
   let best = maximizing ? -INFINITY : INFINITY;
   const origAlpha = alpha;
   let searchedFirst = false;
+  let quietSearched = 0;
+  // Late move pruning thresholds per depth (max quiet moves before skipping the rest)
+  const LMP_THRESHOLD = [0, 5, 12];
 
   for (let mi = 0; mi < moves.length; mi++) {
     const move = moves[mi];
+    const isQuiet = !move.captured && !move.promotion;
 
     // Skip quiet moves that statically cannot reach alpha
-    if (staticEval !== null && !move.captured && !move.promotion) {
+    if (staticEval !== null && isQuiet) {
       if (maximizing && staticEval + FUTILITY_MARGIN[depth] <= alpha) continue;
       if (!maximizing && staticEval - FUTILITY_MARGIN[depth] >= beta) continue;
+    }
+
+    // Late move pruning: after searching enough quiet moves at low depth, skip the rest
+    if (!inCheckNow && depth <= 2 && isQuiet && searchedFirst) {
+      quietSearched++;
+      if (quietSearched > LMP_THRESHOLD[depth]) continue;
     }
 
     chess.move(move);
 
     const givesCheck = chess.in_check();
-    const isQuiet = !move.captured && !move.promotion;
     let score;
     const newDepth = depth - 1;
 
