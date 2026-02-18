@@ -346,15 +346,18 @@ function pawnEval(board, wPawnFiles, bPawnFiles, wKingFile, wKingRank, bKingFile
 }
 
 /* ── Move ordering ───────────────────────────────────────── */
-function orderMoves(moves, chess, ply) {
+function orderMoves(moves, chess, ply, prevMoveKey) {
   // Killers stored as from+to keys (position-independent, transposition-safe)
   const kSet = new Set((_killers[ply] || []).filter(Boolean));
+  const counterKey = prevMoveKey ? _counterMoves[prevMoveKey] : null;
   return moves.slice().sort((a, b) => {
     const scoreMove = m => {
       let s = 0;
       if (m.captured) s += PIECE_VALUE[m.captured] * 10 - PIECE_VALUE[m.piece];
       if (m.promotion) s += PIECE_VALUE[m.promotion] * 8;
       if (kSet.has(m.from + m.to)) s += 90;
+      // Countermove bonus: quiet move that historically refutes the opponent's last move
+      if (counterKey && !m.captured && !m.promotion && counterKey === m.piece + m.from + m.to) s += 75;
       // History bonus uses piece+from+to for finer granularity
       if (!m.captured && !m.promotion) {
         const hk = m.piece + m.from + m.to;
@@ -415,6 +418,12 @@ let _killers = [];
 /* History heuristic: tracks how often quiet moves caused cutoffs */
 let _histTable = {};
 
+/* Countermove heuristic: best refutation for each opponent move (piece+from+to → counter key) */
+let _counterMoves = {};
+
+/* Move stack: records the move made at each ply for countermove lookup */
+let _moveStack = [];
+
 /* ── LMR reduction table [depth][moveIndex] ─────────────── */
 const LMR_TABLE = (() => {
   const t = [];
@@ -473,7 +482,8 @@ function alphaBeta(chess, depth, alpha, beta, maximizing, ply) {
   // Futility pruning: at low depths, skip quiet moves that cannot improve alpha
   const FUTILITY_MARGIN = [0, 150, 300];
 
-  const moves = orderMoves(rawMoves, chess, ply);
+  const prevMoveKey = ply > 0 ? _moveStack[ply - 1] : null;
+  const moves = orderMoves(rawMoves, chess, ply, prevMoveKey);
   let best = maximizing ? -INFINITY : INFINITY;
   const origAlpha = alpha;
   let searchedFirst = false;
@@ -497,6 +507,7 @@ function alphaBeta(chess, depth, alpha, beta, maximizing, ply) {
       if (quietSearched > LMP_THRESHOLD[depth]) continue;
     }
 
+    _moveStack[ply] = move.piece + move.from + move.to;
     chess.move(move);
 
     const givesCheck = chess.in_check();
@@ -548,6 +559,8 @@ function alphaBeta(chess, depth, alpha, beta, maximizing, ply) {
         // Update history table with piece+from+to key
         const hk = move.piece + move.from + move.to;
         _histTable[hk] = (_histTable[hk] || 0) + depth * depth;
+        // Countermove: record which move refuted the opponent's previous move
+        if (prevMoveKey) _counterMoves[prevMoveKey] = hk;
       }
       break;
     }
@@ -613,6 +626,8 @@ function searchRoot(fen, depth, multiPV) {
 
   _nodes = 0;
   _killers = [];
+  _moveStack = [];
+  // Countermove table persists across calls (positions/responses are stable)
   // History gravity: preserve prior-iteration data at half weight so hot
   // moves from shallower depths guide move ordering in deeper iterations
   const oldHist = _histTable;
