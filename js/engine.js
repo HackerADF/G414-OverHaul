@@ -2,7 +2,7 @@
  * engine.js – Alpha-beta minimax chess engine with:
  *   • Iterative deepening with aspiration windows
  *   • Null-move pruning (R=3)
- *   • Late-move reductions (LMR)
+ *   • Late-move reductions (LMR) with log-based depth/move-index table
  *   • Futility pruning + delta pruning in quiescence
  *   • Check extensions (depth ≤ 2)
  *   • Move ordering: MVV/LVA, killers, history heuristic
@@ -342,6 +342,20 @@ let _killers = [];
 /* History heuristic: tracks how often quiet moves caused cutoffs */
 let _histTable = {};
 
+/* ── LMR reduction table [depth][moveIndex] ─────────────── */
+const LMR_TABLE = (() => {
+  const t = [];
+  for (let d = 0; d < 32; d++) {
+    t[d] = [];
+    for (let m = 0; m < 64; m++) {
+      t[d][m] = d === 0 || m === 0
+        ? 0
+        : Math.max(1, Math.floor(0.75 + Math.log(d) * Math.log(m + 1) / 2.25));
+    }
+  }
+  return t;
+})();
+
 function alphaBeta(chess, depth, alpha, beta, maximizing, ply) {
   _nodes++;
 
@@ -394,17 +408,19 @@ function alphaBeta(chess, depth, alpha, beta, maximizing, ply) {
 
     const givesCheck = chess.in_check();
 
-    // Late-move reductions: reduce quiet moves after the first 3 at depth >= 3
+    // Late-move reductions: log-based formula scales with depth and move index
     const isQuiet = !move.captured && !move.promotion;
     let score;
-    if (mi >= 3 && depth >= 3 && isQuiet && !givesCheck) {
-      score = alphaBeta(chess, depth - 2, alpha, beta, !maximizing, ply + 1);
-      const needsResearch = maximizing ? score > alpha : score < beta;
-      if (needsResearch) {
-        score = alphaBeta(chess, depth - 1, alpha, beta, !maximizing, ply + 1);
+    const newDepth = depth - 1;
+    if (mi >= 2 && depth >= 3 && isQuiet && !givesCheck && !inCheckNow) {
+      const r = Math.min(newDepth, LMR_TABLE[Math.min(31, depth)][Math.min(63, mi)]);
+      const reducedDepth = newDepth - r;
+      score = alphaBeta(chess, reducedDepth, alpha, beta, !maximizing, ply + 1);
+      if (score > alpha) {
+        score = alphaBeta(chess, newDepth, alpha, beta, !maximizing, ply + 1);
       }
     } else {
-      score = alphaBeta(chess, depth - 1, alpha, beta, !maximizing, ply + 1);
+      score = alphaBeta(chess, newDepth, alpha, beta, !maximizing, ply + 1);
     }
 
     chess.undo();
