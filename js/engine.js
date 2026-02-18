@@ -626,22 +626,26 @@ function searchRoot(fen, depth, multiPV) {
 
   const results = [];
 
-  const ASP_WINDOW = 50; // aspiration window half-width in centipawns
+  const ASP_DELTA = 50; // initial aspiration window half-width in centipawns
 
   for (const move of rawMoves) {
     chess.move(move);
     let score = 0;
     let prevScore = 0;
-    // Iterative deepening with aspiration windows
+    // Iterative deepening with incrementally widening aspiration windows
     for (let d = 1; d <= depth; d++) {
       let s;
       if (d > 1) {
-        // Try narrow window first
-        const lo = prevScore - ASP_WINDOW, hi = prevScore + ASP_WINDOW;
+        // Try narrow window; on miss widen to 3× before falling back to full
+        let lo = prevScore - ASP_DELTA, hi = prevScore + ASP_DELTA;
         s = alphaBeta(chess, d - 1, lo, hi, !max, 0);
         if (s <= lo || s >= hi) {
-          // Window miss – fall back to full search
-          s = alphaBeta(chess, d - 1, -INFINITY, INFINITY, !max, 0);
+          lo = prevScore - ASP_DELTA * 3;
+          hi = prevScore + ASP_DELTA * 3;
+          s = alphaBeta(chess, d - 1, lo, hi, !max, 0);
+          if (s <= lo || s >= hi) {
+            s = alphaBeta(chess, d - 1, -INFINITY, INFINITY, !max, 0);
+          }
         }
       } else {
         s = alphaBeta(chess, d - 1, -INFINITY, INFINITY, !max, 0);
