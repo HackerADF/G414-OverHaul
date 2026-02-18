@@ -577,6 +577,13 @@ function quiescence(chess, alpha, beta, maximizing) {
 
   const DELTA = 200; // delta pruning margin
   const captures = chess.moves({ verbose: true }).filter(m => m.captured || m.promotion);
+  // Sort captures by MVV-LVA so the most promising captures are tried first,
+  // improving delta-pruning effectiveness and beta-cutoff frequency
+  captures.sort((a, b) => {
+    const score = m => (m.captured ? PIECE_VALUE[m.captured] * 10 - PIECE_VALUE[m.piece] : 0)
+                     + (m.promotion ? PIECE_VALUE[m.promotion] : 0);
+    return score(b) - score(a);
+  });
   for (const move of captures) {
     // Delta pruning: skip captures whose maximum gain cannot reach alpha
     if (move.captured) {
