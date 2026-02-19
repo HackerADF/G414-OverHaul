@@ -11,7 +11,7 @@
  *   • Piece-square tables (opening + endgame blended by phase)
  *   • Material + symmetric mobility (phase-scaled, skipped in QS) + pawn structure evaluation:
  *     – Passed pawns (phase-scaled), candidate passed pawns, doubled, isolated
- *     – Rook on open/semi-open file
+ *     – Rook on open/semi-open file, rook on 7th rank
  *     – Bishop pair bonus, tempo bonus
  *     – Pawn shield king safety, king attack zone (piece proximity)
  *   • Multi-PV (return N best root moves)
@@ -183,6 +183,24 @@ function evaluate(chess, skipMobility = false) {
 
   // King attack zone: penalise opponent pieces swarming king proximity
   score += kingAttackScore(board, wKingFile, wKingRank, bKingFile, bKingRank, endgameW);
+
+  // Rook on 7th rank: bonus when rook reaches the opponent's pawn rank or traps the enemy king
+  for (let r = 0; r < 8; r++) {
+    for (let f = 0; f < 8; f++) {
+      const p = board[r][f];
+      if (!p || p.type !== 'r') continue;
+      const rank = 8 - r;
+      if (p.color === 'w' && rank === 7) {
+        const has7thPawns = (bPawnFiles[f] || []).includes(7) ||
+          Object.values(bPawnFiles).some(ranks => ranks.includes(7));
+        if (has7thPawns || bKingRank === 8) score += 25;
+      }
+      if (p.color === 'b' && rank === 2) {
+        const has2ndPawns = Object.values(wPawnFiles).some(ranks => ranks.includes(2));
+        if (has2ndPawns || wKingRank === 1) score -= 25;
+      }
+    }
+  }
 
   // Tempo bonus: the side to move has a small initiative advantage
   score += chess.turn() === 'w' ? 10 : -10;
