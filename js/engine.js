@@ -355,6 +355,31 @@ function pawnEval(board, wPawnFiles, bPawnFiles, wKingFile, wKingRank, bKingFile
     }
   }
 
+  // Backward pawn penalty: pawn that cannot be supported by friendly pawns,
+  // whose stop square is controlled by an enemy pawn, and is blocked by one
+  for (let f = 0; f < 8; f++) {
+    for (const rank of (wPawnFiles[f] || [])) {
+      const hasSupport = (wPawnFiles[f - 1] || []).some(wr => wr <= rank)
+                      || (wPawnFiles[f + 1] || []).some(wr => wr <= rank);
+      if (!hasSupport) {
+        const stopControlled = (bPawnFiles[f - 1] || []).some(br => br === rank + 1)
+                            || (bPawnFiles[f + 1] || []).some(br => br === rank + 1);
+        const blocked = (bPawnFiles[f] || []).some(br => br === rank + 1);
+        if (stopControlled && blocked) s -= 15;
+      }
+    }
+    for (const rank of (bPawnFiles[f] || [])) {
+      const hasSupport = (bPawnFiles[f - 1] || []).some(br => br >= rank)
+                      || (bPawnFiles[f + 1] || []).some(br => br >= rank);
+      if (!hasSupport) {
+        const stopControlled = (wPawnFiles[f - 1] || []).some(wr => wr === rank - 1)
+                            || (wPawnFiles[f + 1] || []).some(wr => wr === rank - 1);
+        const blocked = (wPawnFiles[f] || []).some(wr => wr === rank - 1);
+        if (stopControlled && blocked) s += 15;
+      }
+    }
+  }
+
   // Isolated pawn penalty
   for (let f = 0; f < 8; f++) {
     const wc = (wPawnFiles[f] || []).length;
