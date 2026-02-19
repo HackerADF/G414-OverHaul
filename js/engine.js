@@ -202,6 +202,30 @@ function evaluate(chess, skipMobility = false) {
     }
   }
 
+  // Knight outpost: bonus for a knight on an advanced square protected by a
+  // friendly pawn where no enemy pawn can challenge it
+  for (let r = 0; r < 8; r++) {
+    for (let f = 0; f < 8; f++) {
+      const p = board[r][f];
+      if (!p || p.type !== 'n') continue;
+      const rank = 8 - r;
+      if (p.color === 'w' && rank >= 5) {
+        const protectedByPawn = (wPawnFiles[f - 1] || []).includes(rank - 1)
+                             || (wPawnFiles[f + 1] || []).includes(rank - 1);
+        const challengeable = (bPawnFiles[f - 1] || []).some(br => br < rank)
+                           || (bPawnFiles[f + 1] || []).some(br => br < rank);
+        if (protectedByPawn && !challengeable) score += 20;
+      }
+      if (p.color === 'b' && rank <= 4) {
+        const protectedByPawn = (bPawnFiles[f - 1] || []).includes(rank + 1)
+                             || (bPawnFiles[f + 1] || []).includes(rank + 1);
+        const challengeable = (wPawnFiles[f - 1] || []).some(wr => wr > rank)
+                           || (wPawnFiles[f + 1] || []).some(wr => wr > rank);
+        if (protectedByPawn && !challengeable) score -= 20;
+      }
+    }
+  }
+
   // Tempo bonus: the side to move has a small initiative advantage
   score += chess.turn() === 'w' ? 10 : -10;
 
