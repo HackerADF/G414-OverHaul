@@ -6,6 +6,7 @@
  *   • Futility pruning + delta pruning in quiescence
  *   • Check extensions (depth ≤ 2)
  *   • Move ordering: MVV/LVA, killers, history heuristic
+ *   • PVS (Principal Variation Search) with null-window re-search
  *   • 1M-slot transposition table
  *   • Piece-square tables (opening + endgame blended by phase)
  *   • Material + mobility + pawn structure evaluation:
@@ -394,6 +395,7 @@ function alphaBeta(chess, depth, alpha, beta, maximizing, ply) {
   const moves = orderMoves(rawMoves, chess, ply);
   let best = maximizing ? -INFINITY : INFINITY;
   const origAlpha = alpha;
+  let searchedFirst = false;
 
   for (let mi = 0; mi < moves.length; mi++) {
     const move = moves[mi];
@@ -407,20 +409,32 @@ function alphaBeta(chess, depth, alpha, beta, maximizing, ply) {
     chess.move(move);
 
     const givesCheck = chess.in_check();
-
-    // Late-move reductions: log-based formula scales with depth and move index
     const isQuiet = !move.captured && !move.promotion;
     let score;
     const newDepth = depth - 1;
-    if (mi >= 2 && depth >= 3 && isQuiet && !givesCheck && !inCheckNow) {
+
+    if (!searchedFirst) {
+      // PV move: full-window search
+      score = alphaBeta(chess, newDepth, alpha, beta, !maximizing, ply + 1);
+      searchedFirst = true;
+    } else if (mi >= 2 && depth >= 3 && isQuiet && !givesCheck && !inCheckNow) {
+      // LMR + PVS null-window at reduced depth
       const r = Math.min(newDepth, LMR_TABLE[Math.min(31, depth)][Math.min(63, mi)]);
       const reducedDepth = newDepth - r;
-      score = alphaBeta(chess, reducedDepth, alpha, beta, !maximizing, ply + 1);
-      if (score > alpha) {
+      const nullLo = maximizing ? alpha : beta - 1;
+      const nullHi = maximizing ? alpha + 1 : beta;
+      score = alphaBeta(chess, reducedDepth, nullLo, nullHi, !maximizing, ply + 1);
+      if (score > alpha && score < beta) {
         score = alphaBeta(chess, newDepth, alpha, beta, !maximizing, ply + 1);
       }
     } else {
-      score = alphaBeta(chess, newDepth, alpha, beta, !maximizing, ply + 1);
+      // PVS null-window for subsequent non-LMR moves
+      const nullLo = maximizing ? alpha : beta - 1;
+      const nullHi = maximizing ? alpha + 1 : beta;
+      score = alphaBeta(chess, newDepth, nullLo, nullHi, !maximizing, ply + 1);
+      if (score > alpha && score < beta) {
+        score = alphaBeta(chess, newDepth, alpha, beta, !maximizing, ply + 1);
+      }
     }
 
     chess.undo();
