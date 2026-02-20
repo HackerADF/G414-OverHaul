@@ -229,6 +229,33 @@ function evaluate(chess, skipMobility = false) {
   // Tempo bonus: the side to move has a small initiative advantage
   score += chess.turn() === 'w' ? 10 : -10;
 
+  // Hanging piece penalty: penalise pieces attacked by enemy pawns but not defended by own pawns
+  for (let r = 0; r < 8; r++) {
+    for (let f = 0; f < 8; f++) {
+      const p = board[r][f];
+      if (!p || p.type === 'p' || p.type === 'k') continue;
+      if (PIECE_VALUE[p.type] < 300) continue;
+      const rank = 8 - r;
+      if (p.color === 'w') {
+        const attackedByBPawn = (bPawnFiles[f - 1] || []).some(br => br === rank + 1)
+                             || (bPawnFiles[f + 1] || []).some(br => br === rank + 1);
+        if (attackedByBPawn) {
+          const defendedByWPawn = (wPawnFiles[f - 1] || []).some(wr => wr === rank - 1)
+                               || (wPawnFiles[f + 1] || []).some(wr => wr === rank - 1);
+          if (!defendedByWPawn) score -= 20;
+        }
+      } else {
+        const attackedByWPawn = (wPawnFiles[f - 1] || []).some(wr => wr === rank - 1)
+                             || (wPawnFiles[f + 1] || []).some(wr => wr === rank - 1);
+        if (attackedByWPawn) {
+          const defendedByBPawn = (bPawnFiles[f - 1] || []).some(br => br === rank + 1)
+                               || (bPawnFiles[f + 1] || []).some(br => br === rank + 1);
+          if (!defendedByBPawn) score += 20;
+        }
+      }
+    }
+  }
+
   // Symmetric mobility: score difference between both sides' legal move counts,
   // scaled by middlegame weight (mobility matters less in the endgame)
   if (!skipMobility) {
