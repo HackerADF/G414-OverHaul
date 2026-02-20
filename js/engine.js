@@ -5,7 +5,7 @@
  *   • Late-move reductions (LMR) with log-based depth/move-index table
  *   • Futility pruning + delta pruning in quiescence
  *   • Check extensions (depth ≤ 2)
- *   • Move ordering: MVV/LVA, killers, history heuristic
+ *   • Move ordering: MVV/LVA, killers (from+to key), history heuristic with gravity decay
  *   • PVS (Principal Variation Search) with null-window re-search
  *   • 1M-slot transposition table
  *   • Piece-square tables (opening + endgame blended by phase)
@@ -276,16 +276,17 @@ function pawnEval(board, wPawnFiles, bPawnFiles, wKingFile, wKingRank, bKingFile
 
 /* ── Move ordering ───────────────────────────────────────── */
 function orderMoves(moves, chess, ply) {
+  // Killers stored as from+to keys (position-independent, transposition-safe)
   const kSet = new Set((_killers[ply] || []).filter(Boolean));
   return moves.slice().sort((a, b) => {
     const scoreMove = m => {
       let s = 0;
       if (m.captured) s += PIECE_VALUE[m.captured] * 10 - PIECE_VALUE[m.piece];
       if (m.promotion) s += PIECE_VALUE[m.promotion] * 8;
-      if (kSet.has(m.san)) s += 90;
-      // History bonus for quiet moves
+      if (kSet.has(m.from + m.to)) s += 90;
+      // History bonus uses piece+from+to for finer granularity
       if (!m.captured && !m.promotion) {
-        const hk = m.piece + m.to;
+        const hk = m.piece + m.from + m.to;
         if (_histTable[hk]) s += Math.min(80, _histTable[hk] / 100);
       }
       return s;
@@ -447,15 +448,16 @@ function alphaBeta(chess, depth, alpha, beta, maximizing, ply) {
       if (score < beta)  beta = score;
     }
     if (alpha >= beta) {
-      // Store killer move for quiet beta cutoffs
+      // Store killer move for quiet beta cutoffs (from+to key is transposition-safe)
       if (!move.captured && !move.promotion) {
         if (!_killers[ply]) _killers[ply] = [null, null];
-        if (_killers[ply][0] !== move.san) {
+        const kk = move.from + move.to;
+        if (_killers[ply][0] !== kk) {
           _killers[ply][1] = _killers[ply][0];
-          _killers[ply][0] = move.san;
+          _killers[ply][0] = kk;
         }
-        // Update history table
-        const hk = move.piece + move.to;
+        // Update history table with piece+from+to key
+        const hk = move.piece + move.from + move.to;
         _histTable[hk] = (_histTable[hk] || 0) + depth * depth;
       }
       break;
@@ -515,7 +517,14 @@ function searchRoot(fen, depth, multiPV) {
 
   _nodes = 0;
   _killers = [];
+  // History gravity: preserve prior-iteration data at half weight so hot
+  // moves from shallower depths guide move ordering in deeper iterations
+  const oldHist = _histTable;
   _histTable = {};
+  for (const k in oldHist) {
+    const v = oldHist[k] >> 1;
+    if (v > 0) _histTable[k] = v;
+  }
   const rawMoves = chess.moves({ verbose: true });
   if (!rawMoves.length) return [];
 
