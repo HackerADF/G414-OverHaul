@@ -388,6 +388,20 @@ function pawnEval(board, wPawnFiles, bPawnFiles, wKingFile, wKingRank, bKingFile
     if (bc > 0 && !bPawnFiles[f - 1] && !bPawnFiles[f + 1]) s += bc * 20;
   }
 
+  // Connected pawns bonus: mutual pawn defense on adjacent files (±1 rank)
+  for (let f = 0; f < 8; f++) {
+    for (const rank of (wPawnFiles[f] || [])) {
+      const connected = (f > 0 && (wPawnFiles[f - 1] || []).some(wr => Math.abs(wr - rank) <= 1))
+                     || (f < 7 && (wPawnFiles[f + 1] || []).some(wr => Math.abs(wr - rank) <= 1));
+      if (connected) s += 8;
+    }
+    for (const rank of (bPawnFiles[f] || [])) {
+      const connected = (f > 0 && (bPawnFiles[f - 1] || []).some(br => Math.abs(br - rank) <= 1))
+                     || (f < 7 && (bPawnFiles[f + 1] || []).some(br => Math.abs(br - rank) <= 1));
+      if (connected) s -= 8;
+    }
+  }
+
   // Pawn shield (middlegame only)
   if (endgameW < 0.6) {
     const shieldMg = Math.round(8 * (1 - endgameW));
