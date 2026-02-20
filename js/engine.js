@@ -560,6 +560,11 @@ const LMR_TABLE = (() => {
 function alphaBeta(chess, depth, alpha, beta, maximizing, ply) {
   _nodes++;
 
+  // Mate distance pruning: tighten alpha/beta based on the soonest possible mate
+  alpha = Math.max(alpha, -(30000 - ply));
+  beta  = Math.min(beta,   30000 - ply);
+  if (alpha >= beta) return alpha;
+
   // Transposition table lookup
   const fen = chess.fen();
   const ttHit = ttGet(fen, depth, alpha, beta);
