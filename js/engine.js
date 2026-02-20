@@ -226,6 +226,17 @@ function evaluate(chess, skipMobility = false) {
     }
   }
 
+  // Space advantage: total pawn rank advance on central files (c-f), middlegame only
+  {
+    let wSpace = 0, bSpace = 0;
+    for (let f = 2; f <= 5; f++) {
+      for (const rank of (wPawnFiles[f] || [])) wSpace += rank - 2;
+      for (const rank of (bPawnFiles[f] || [])) bSpace += 7 - rank;
+    }
+    const spaceMgW = Math.max(0, 1 - endgameW) * 0.5;
+    score += Math.round((wSpace - bSpace) * spaceMgW);
+  }
+
   // Tempo bonus: the side to move has a small initiative advantage
   score += chess.turn() === 'w' ? 10 : -10;
 
