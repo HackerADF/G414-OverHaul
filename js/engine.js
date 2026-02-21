@@ -9,7 +9,7 @@
  *   • PVS (Principal Variation Search) with null-window re-search
  *   • 1M-slot transposition table
  *   • Piece-square tables (opening + endgame blended by phase)
- *   • Material + mobility + pawn structure evaluation:
+ *   • Material + symmetric mobility (phase-scaled, skipped in QS) + pawn structure evaluation:
  *     – Passed pawns, doubled pawns, isolated pawns
  *     – Rook on open/semi-open file
  *     – Bishop pair bonus, tempo bonus
@@ -184,9 +184,19 @@ function evaluate(chess, skipMobility = false) {
   // Tempo bonus: the side to move has a small initiative advantage
   score += chess.turn() === 'w' ? 10 : -10;
 
-  // Mobility bonus (skipped in quiescence to reduce legal-move generation overhead)
+  // Symmetric mobility: score difference between both sides' legal move counts,
+  // scaled by middlegame weight (mobility matters less in the endgame)
   if (!skipMobility) {
-    score += chess.moves().length * (chess.turn() === 'w' ? 2 : -2);
+    const toMoveCount = chess.moves().length;
+    const fenParts = chess.fen().split(' ');
+    fenParts[1] = fenParts[1] === 'w' ? 'b' : 'w';
+    fenParts[3] = '-'; // clear en passant (invalid for swapped side)
+    let oppCount = 0;
+    try { oppCount = new Chess(fenParts.join(' ')).moves().length; } catch (_) {}
+    const mgW = Math.max(0, 1 - endgameW);
+    const wMobility = chess.turn() === 'w' ? toMoveCount : oppCount;
+    const bMobility = chess.turn() === 'w' ? oppCount : toMoveCount;
+    score += Math.round((wMobility - bMobility) * 2 * mgW);
   }
 
   return score;
