@@ -676,10 +676,23 @@ function alphaBeta(chess, depth, alpha, beta, maximizing, ply) {
 
     if (maximizing) {
       if (score > best) { best = score; bestMoveSoFar = move.from + move.to; }
-      if (score > alpha) alpha = score;
+      if (score > alpha) {
+        alpha = score;
+        // History bonus for quiet moves that raise alpha (not just cutoffs)
+        if (isQuiet) {
+          const hk = move.piece + move.from + move.to;
+          _histTable[hk] = (_histTable[hk] || 0) + depth;
+        }
+      }
     } else {
       if (score < best) { best = score; bestMoveSoFar = move.from + move.to; }
-      if (score < beta)  beta = score;
+      if (score < beta) {
+        beta = score;
+        if (isQuiet) {
+          const hk = move.piece + move.from + move.to;
+          _histTable[hk] = (_histTable[hk] || 0) + depth;
+        }
+      }
     }
     if (alpha >= beta) {
       // Store killer move for quiet beta cutoffs (from+to key is transposition-safe)
