@@ -465,13 +465,15 @@ function pawnEval(board, wPawnFiles, bPawnFiles, wKingFile, wKingRank, bKingFile
 }
 
 /* ── Move ordering ───────────────────────────────────────── */
-function orderMoves(moves, chess, ply, prevMoveKey) {
+function orderMoves(moves, chess, ply, prevMoveKey, ttMove) {
   // Killers stored as from+to keys (position-independent, transposition-safe)
   const kSet = new Set((_killers[ply] || []).filter(Boolean));
   const counterKey = prevMoveKey ? _counterMoves[prevMoveKey] : null;
   return moves.slice().sort((a, b) => {
     const scoreMove = m => {
       let s = 0;
+      // TT best move from a previous search at this position gets highest priority
+      if (ttMove && m.from + m.to === ttMove) s += 300;
       if (m.captured) s += PIECE_VALUE[m.captured] * 10 - PIECE_VALUE[m.piece];
       if (m.promotion) s += PIECE_VALUE[m.promotion] * 8;
       if (kSet.has(m.from + m.to)) s += 90;
@@ -519,12 +521,18 @@ function ttGet(fen, depth, alpha, beta) {
   return null;
 }
 
-function ttSet(fen, depth, score, flag) {
+function ttSet(fen, depth, score, flag, bestMove) {
   const k = ttKey(fen);
   const e = ttTable[k];
   if (!e || e.depth <= depth) {
-    ttTable[k] = { fen, depth, score, flag };
+    ttTable[k] = { fen, depth, score, flag, bestMove: bestMove || null };
   }
+}
+
+function ttGetMove(fen) {
+  const k = ttKey(fen);
+  const e = ttTable[k];
+  return (e && e.fen === fen && e.bestMove) ? e.bestMove : null;
 }
 
 /* ── Alpha-Beta Minimax ──────────────────────────────────── */
@@ -607,8 +615,10 @@ function alphaBeta(chess, depth, alpha, beta, maximizing, ply) {
   const FUTILITY_MARGIN = [0, 150, 300];
 
   const prevMoveKey = ply > 0 ? _moveStack[ply - 1] : null;
-  const moves = orderMoves(rawMoves, chess, ply, prevMoveKey);
+  const ttMove = ttGetMove(fen);
+  const moves = orderMoves(rawMoves, chess, ply, prevMoveKey, ttMove);
   let best = maximizing ? -INFINITY : INFINITY;
+  let bestMoveSoFar = null;
   const origAlpha = alpha;
   let searchedFirst = false;
   let quietSearched = 0;
@@ -665,10 +675,10 @@ function alphaBeta(chess, depth, alpha, beta, maximizing, ply) {
     chess.undo();
 
     if (maximizing) {
-      if (score > best) best = score;
+      if (score > best) { best = score; bestMoveSoFar = move.from + move.to; }
       if (score > alpha) alpha = score;
     } else {
-      if (score < best) best = score;
+      if (score < best) { best = score; bestMoveSoFar = move.from + move.to; }
       if (score < beta)  beta = score;
     }
     if (alpha >= beta) {
@@ -690,11 +700,11 @@ function alphaBeta(chess, depth, alpha, beta, maximizing, ply) {
     }
   }
 
-  // Store in TT
+  // Store in TT with best move for future move ordering
   const flag = best >= beta   ? TT_LOWER
              : best <= origAlpha ? TT_UPPER
              : TT_EXACT;
-  ttSet(fen, depth, best, flag);
+  ttSet(fen, depth, best, flag, bestMoveSoFar);
 
   return best;
 }
