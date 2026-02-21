@@ -110,6 +110,7 @@ function evaluate(chess, skipMobility = false) {
   let score = 0;
   let wMat = 0, bMat = 0;
   let wBishops = 0, bBishops = 0;
+  let wPawnCount = 0, bPawnCount = 0;
   let wKingFile = -1, wKingRank = -1;
   let bKingFile = -1, bKingRank = -1;
   const board = chess.board();
@@ -118,7 +119,6 @@ function evaluate(chess, skipMobility = false) {
     for (let f = 0; f < 8; f++) {
       const p = board[r][f];
       if (!p) continue;
-      const sq    = 'abcdefgh'[f] + (r + 1);  // note: board[0] = rank 8
       const realSq = 'abcdefgh'[f] + (8 - r);
       const val   = PIECE_VALUE[p.type];
       const idx   = sqIdx(realSq, p.color);
@@ -129,9 +129,8 @@ function evaluate(chess, skipMobility = false) {
       if (p.color === 'w') { wMat += val; score += val + pst; }
       else                  { bMat += val; score -= val + pst; }
 
-      if (p.type === 'b') {
-        if (p.color === 'w') wBishops++; else bBishops++;
-      }
+      if (p.type === 'b') { if (p.color === 'w') wBishops++; else bBishops++; }
+      if (p.type === 'p') { if (p.color === 'w') wPawnCount++; else bPawnCount++; }
       if (p.type === 'k') {
         if (p.color === 'w') { wKingFile = f; wKingRank = 8 - r; }
         else                  { bKingFile = f; bKingRank = 8 - r; }
@@ -139,9 +138,10 @@ function evaluate(chess, skipMobility = false) {
     }
   }
 
-  // Bishop pair bonus: +30cp for controlling both colour complexes
-  if (wBishops >= 2) score += 30;
-  if (bBishops >= 2) score -= 30;
+  // Bishop pair bonus scales with board openness: fewer pawns = more valuable bishops
+  const bpOpenScale = Math.max(0.3, 1 - (wPawnCount + bPawnCount) / 16);
+  if (wBishops >= 2) score += Math.round(30 * bpOpenScale);
+  if (bBishops >= 2) score -= Math.round(30 * bpOpenScale);
 
   // King safety: blend between middle-game and end-game PST
   const totalMat = wMat + bMat - PIECE_VALUE.k * 2;
