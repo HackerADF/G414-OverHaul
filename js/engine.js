@@ -240,6 +240,23 @@ function evaluate(chess, skipMobility = false) {
   // Tempo bonus: the side to move has a small initiative advantage
   score += chess.turn() === 'w' ? 10 : -10;
 
+  // Rook battery bonus: doubled rooks on the same file or rank
+  {
+    const wRooks = [], bRooks = [];
+    for (let r = 0; r < 8; r++) {
+      for (let f = 0; f < 8; f++) {
+        const p = board[r][f];
+        if (p && p.type === 'r') (p.color === 'w' ? wRooks : bRooks).push({ r, f });
+      }
+    }
+    for (let i = 0; i < wRooks.length - 1; i++)
+      for (let j = i + 1; j < wRooks.length; j++)
+        if (wRooks[i].f === wRooks[j].f || wRooks[i].r === wRooks[j].r) score += 15;
+    for (let i = 0; i < bRooks.length - 1; i++)
+      for (let j = i + 1; j < bRooks.length; j++)
+        if (bRooks[i].f === bRooks[j].f || bRooks[i].r === bRooks[j].r) score -= 15;
+  }
+
   // Hanging piece penalty: penalise pieces attacked by enemy pawns but not defended by own pawns
   for (let r = 0; r < 8; r++) {
     for (let f = 0; f < 8; f++) {
