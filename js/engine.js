@@ -486,6 +486,36 @@ function pawnEval(board, wPawnFiles, bPawnFiles, wKingFile, wKingRank, bKingFile
     }
   }
 
+  // Endgame king proximity to passed pawns: friendly king close = good, enemy king close = bad
+  if (endgameW > 0.3) {
+    for (let f = 0; f < 8; f++) {
+      for (const rank of (wPawnFiles[f] || [])) {
+        let passed = true;
+        for (let df = -1; df <= 1; df++) {
+          const bf = f + df; if (bf < 0 || bf > 7) continue;
+          if ((bPawnFiles[bf] || []).some(br => br > rank)) { passed = false; break; }
+        }
+        if (passed && wKingFile >= 0) {
+          const wDist = Math.max(Math.abs(wKingFile - f), Math.abs(wKingRank - rank));
+          const bDist = bKingFile >= 0 ? Math.max(Math.abs(bKingFile - f), Math.abs(bKingRank - rank)) : 7;
+          s += Math.round((bDist - wDist) * 5 * endgameW);
+        }
+      }
+      for (const rank of (bPawnFiles[f] || [])) {
+        let passed = true;
+        for (let df = -1; df <= 1; df++) {
+          const bf = f + df; if (bf < 0 || bf > 7) continue;
+          if ((wPawnFiles[bf] || []).some(wr => wr < rank)) { passed = false; break; }
+        }
+        if (passed && bKingFile >= 0) {
+          const bDist = Math.max(Math.abs(bKingFile - f), Math.abs(bKingRank - rank));
+          const wDist = wKingFile >= 0 ? Math.max(Math.abs(wKingFile - f), Math.abs(wKingRank - rank)) : 7;
+          s -= Math.round((wDist - bDist) * 5 * endgameW);
+        }
+      }
+    }
+  }
+
   // Pawn shield (middlegame only)
   if (endgameW < 0.6) {
     const shieldMg = Math.round(8 * (1 - endgameW));
