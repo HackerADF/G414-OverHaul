@@ -240,8 +240,9 @@ function evaluate(chess, skipMobility = false) {
     score += Math.round((wSpace - bSpace) * spaceMgW);
   }
 
-  // Tempo bonus: the side to move has a small initiative advantage
-  score += chess.turn() === 'w' ? 10 : -10;
+  // Tempo bonus: initiative advantage scales from 15cp in opening to 5cp in endgame
+  const tempoVal = Math.round(15 - 10 * endgameW);
+  score += chess.turn() === 'w' ? tempoVal : -tempoVal;
 
   // Rook battery bonus: doubled rooks on the same file or rank
   {
