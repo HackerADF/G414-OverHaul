@@ -184,6 +184,9 @@ function evaluate(chess, skipMobility = false) {
   // King attack zone: penalise opponent pieces swarming king proximity
   score += kingAttackScore(board, wKingFile, wKingRank, bKingFile, bKingRank, endgameW);
 
+  // King tropism: reward pieces that are geometrically close to the enemy king
+  score += kingTropismScore(board, wKingFile, wKingRank, bKingFile, bKingRank);
+
   // Rook on 7th rank: bonus when rook reaches the opponent's pawn rank or traps the enemy king
   for (let r = 0; r < 8; r++) {
     for (let f = 0; f < 8; f++) {
@@ -300,6 +303,32 @@ function evaluate(chess, skipMobility = false) {
   }
 
   return score;
+}
+
+/* ── King tropism: piece proximity to enemy king ────────── */
+// Bonus for having pieces close to the enemy king (Chebyshev distance).
+// Returns centipawns positive = white pieces closer to black king.
+function kingTropismScore(board, wKingFile, wKingRank, bKingFile, bKingRank) {
+  const TROPISM_W = { n: 3, b: 2, r: 2, q: 4 };
+  let score = 0;
+  for (let r = 0; r < 8; r++) {
+    for (let f = 0; f < 8; f++) {
+      const p = board[r][f];
+      if (!p) continue;
+      const w = TROPISM_W[p.type];
+      if (!w) continue;
+      const pr = 8 - r;
+      if (p.color === 'w' && bKingFile >= 0) {
+        const dist = Math.max(Math.abs(f - bKingFile), Math.abs(pr - bKingRank));
+        score += Math.max(0, (7 - dist) * w);
+      }
+      if (p.color === 'b' && wKingFile >= 0) {
+        const dist = Math.max(Math.abs(f - wKingFile), Math.abs(pr - wKingRank));
+        score -= Math.max(0, (7 - dist) * w);
+      }
+    }
+  }
+  return Math.round(score * 0.5);
 }
 
 /* ── King attack zone safety ─────────────────────────────── */
