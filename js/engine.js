@@ -13,7 +13,7 @@
  *     – Passed pawns, doubled pawns, isolated pawns
  *     – Rook on open/semi-open file
  *     – Bishop pair bonus, tempo bonus
- *     – Pawn shield king safety
+ *     – Pawn shield king safety, king attack zone (piece proximity)
  *   • Multi-PV (return N best root moves)
  */
 
@@ -181,6 +181,9 @@ function evaluate(chess, skipMobility = false) {
   // Pawn structure + rook files + pawn shield
   score += pawnEval(board, wPawnFiles, bPawnFiles, wKingFile, wKingRank, bKingFile, bKingRank, endgameW);
 
+  // King attack zone: penalise opponent pieces swarming king proximity
+  score += kingAttackScore(board, wKingFile, wKingRank, bKingFile, bKingRank, endgameW);
+
   // Tempo bonus: the side to move has a small initiative advantage
   score += chess.turn() === 'w' ? 10 : -10;
 
@@ -200,6 +203,34 @@ function evaluate(chess, skipMobility = false) {
   }
 
   return score;
+}
+
+/* ── King attack zone safety ─────────────────────────────── */
+// Counts opponent pieces in the 3×3 zone around each king and applies a
+// non-linear penalty. Returns centipawns, positive = white king safer.
+function kingAttackScore(board, wKingFile, wKingRank, bKingFile, bKingRank, endgameW) {
+  if (endgameW > 0.7) return 0; // king centralisation in endgame is fine
+  const ATTACK_WEIGHT = { p: 1, n: 2, b: 2, r: 3, q: 5, k: 0 };
+  let wZoneAttacks = 0, bZoneAttacks = 0;
+  for (let r = 0; r < 8; r++) {
+    for (let f = 0; f < 8; f++) {
+      const p = board[r][f];
+      if (!p || p.type === 'k') continue;
+      const pieceRank = 8 - r;
+      const w = ATTACK_WEIGHT[p.type] || 0;
+      if (p.color === 'b' && wKingFile >= 0) {
+        if (Math.abs(f - wKingFile) <= 1 && Math.abs(pieceRank - wKingRank) <= 1)
+          wZoneAttacks += w;
+      }
+      if (p.color === 'w' && bKingFile >= 0) {
+        if (Math.abs(f - bKingFile) <= 1 && Math.abs(pieceRank - bKingRank) <= 1)
+          bZoneAttacks += w;
+      }
+    }
+  }
+  const penalty = att => att === 0 ? 0 : att === 1 ? 10 : att === 2 ? 25
+                       : att === 3 ? 45 : 70 + (att - 3) * 15;
+  return Math.round((penalty(bZoneAttacks) - penalty(wZoneAttacks)) * (1 - endgameW));
 }
 
 /* ── Pawn structure evaluation ───────────────────────────── */
