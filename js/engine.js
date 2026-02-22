@@ -649,16 +649,16 @@ function alphaBeta(chess, depth, alpha, beta, maximizing, ply) {
   // Razoring: if static eval is far below alpha at depth 1-2, skip directly to QS
   const RAZOR_MARGIN = [0, 200, 350];
   let staticEval = null;
-  if (!inCheckNow && depth <= 2) {
+  if (!inCheckNow && depth <= 3) {
     staticEval = evaluate(chess);
-    if (maximizing && depth >= 1 && staticEval + RAZOR_MARGIN[depth] < alpha) {
+    if (maximizing && depth >= 1 && depth <= 2 && staticEval + RAZOR_MARGIN[depth] < alpha) {
       const qsScore = quiescence(chess, alpha - 1, alpha, maximizing);
       if (qsScore < alpha) return qsScore;
     }
   }
 
-  // Futility pruning: at low depths, skip quiet moves that cannot improve alpha
-  const FUTILITY_MARGIN = [0, 150, 300];
+  // Futility pruning extended to depth 3 with a larger margin
+  const FUTILITY_MARGIN = [0, 150, 300, 500];
 
   const prevMoveKey = ply > 0 ? _moveStack[ply - 1] : null;
   const ttMove = ttGetMove(fen);
