@@ -801,28 +801,40 @@ function alphaBeta(chess, depth, alpha, beta, maximizing, ply) {
 /* ── Quiescence Search ───────────────────────────────────── */
 function quiescence(chess, alpha, beta, maximizing) {
   _nodes++;
-  const stand = evaluate(chess, true); // skip mobility for speed
+  const inCheck = chess.in_check();
+  let stand;
 
-  if (maximizing) {
-    if (stand >= beta) return beta;
-    if (stand > alpha) alpha = stand;
-  } else {
-    if (stand <= alpha) return alpha;
-    if (stand < beta) beta = stand;
+  if (!inCheck) {
+    stand = evaluate(chess, true); // skip mobility for speed
+    if (maximizing) {
+      if (stand >= beta) return beta;
+      if (stand > alpha) alpha = stand;
+    } else {
+      if (stand <= alpha) return alpha;
+      if (stand < beta) beta = stand;
+    }
   }
 
   const DELTA = 200; // delta pruning margin
-  const captures = chess.moves({ verbose: true }).filter(m => m.captured || m.promotion);
-  // Sort captures by MVV-LVA so the most promising captures are tried first,
-  // improving delta-pruning effectiveness and beta-cutoff frequency
-  captures.sort((a, b) => {
-    const score = m => (m.captured ? PIECE_VALUE[m.captured] * 10 - PIECE_VALUE[m.piece] : 0)
-                     + (m.promotion ? PIECE_VALUE[m.promotion] : 0);
-    return score(b) - score(a);
+  // In check: must search all evasions, not just captures
+  let allMoves;
+  if (inCheck) {
+    allMoves = chess.moves({ verbose: true });
+    if (!allMoves.length) return maximizing ? -30000 : 30000; // checkmate
+  } else {
+    allMoves = chess.moves({ verbose: true }).filter(m => m.captured || m.promotion);
+  }
+
+  // Sort by MVV-LVA for earlier cutoffs
+  allMoves.sort((a, b) => {
+    const val = m => (m.captured ? PIECE_VALUE[m.captured] * 10 - PIECE_VALUE[m.piece] : 0)
+                   + (m.promotion ? PIECE_VALUE[m.promotion] : 0);
+    return val(b) - val(a);
   });
-  for (const move of captures) {
-    // Delta pruning: skip captures whose maximum gain cannot reach alpha
-    if (move.captured) {
+
+  for (const move of allMoves) {
+    // Delta pruning only when not in check (we have a stand pat value)
+    if (!inCheck && move.captured) {
       const gain = PIECE_VALUE[move.captured];
       if (maximizing  && stand + gain + DELTA < alpha) continue;
       if (!maximizing && stand - gain - DELTA > beta)  continue;
