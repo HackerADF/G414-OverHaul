@@ -10,7 +10,7 @@
  *   • 1M-slot transposition table
  *   • Piece-square tables (opening + endgame blended by phase)
  *   • Material + symmetric mobility (phase-scaled, skipped in QS) + pawn structure evaluation:
- *     – Passed pawns, doubled pawns, isolated pawns
+ *     – Passed pawns (phase-scaled), candidate passed pawns, doubled, isolated
  *     – Rook on open/semi-open file
  *     – Bishop pair bonus, tempo bonus
  *     – Pawn shield king safety, king attack zone (piece proximity)
@@ -238,7 +238,8 @@ function pawnEval(board, wPawnFiles, bPawnFiles, wKingFile, wKingRank, bKingFile
   let s = 0;
   const passedBonus = [0, 0, 10, 20, 35, 55, 80, 120];
 
-  // Passed pawn bonus
+  // Passed pawn bonus (phase-scaled: half value in opening, full in endgame)
+  const CANDIDATE_BONUS = [0, 0, 5, 10, 20, 35, 0, 0];
   for (let f = 0; f < 8; f++) {
     for (const rank of (wPawnFiles[f] || [])) {
       let passed = true;
@@ -247,7 +248,22 @@ function pawnEval(board, wPawnFiles, bPawnFiles, wKingFile, wKingRank, bKingFile
         if (bf < 0 || bf > 7) continue;
         if ((bPawnFiles[bf] || []).some(br => br > rank)) { passed = false; break; }
       }
-      if (passed) s += passedBonus[rank] || 0;
+      if (passed) {
+        const phaseScale = 0.5 + 0.5 * endgameW;
+        s += Math.round((passedBonus[rank] || 0) * phaseScale);
+      } else {
+        // Candidate passed pawn: open path ahead, more supporters than stoppers
+        if ((bPawnFiles[f] || []).filter(br => br > rank).length === 0) {
+          let supporters = 0, stoppers = 0;
+          for (let df = -1; df <= 1; df += 2) {
+            const af = f + df;
+            if (af < 0 || af > 7) continue;
+            supporters += (wPawnFiles[af] || []).filter(wr => wr >= rank - 1 && wr <= rank + 2).length;
+            stoppers   += (bPawnFiles[af] || []).filter(br => br > rank).length;
+          }
+          if (supporters > stoppers) s += CANDIDATE_BONUS[rank] || 0;
+        }
+      }
     }
     for (const rank of (bPawnFiles[f] || [])) {
       let passed = true;
@@ -256,7 +272,21 @@ function pawnEval(board, wPawnFiles, bPawnFiles, wKingFile, wKingRank, bKingFile
         if (bf < 0 || bf > 7) continue;
         if ((wPawnFiles[bf] || []).some(wr => wr < rank)) { passed = false; break; }
       }
-      if (passed) s -= passedBonus[9 - rank] || 0;
+      if (passed) {
+        const phaseScale = 0.5 + 0.5 * endgameW;
+        s -= Math.round((passedBonus[9 - rank] || 0) * phaseScale);
+      } else {
+        if ((wPawnFiles[f] || []).filter(wr => wr < rank).length === 0) {
+          let supporters = 0, stoppers = 0;
+          for (let df = -1; df <= 1; df += 2) {
+            const af = f + df;
+            if (af < 0 || af > 7) continue;
+            supporters += (bPawnFiles[af] || []).filter(br => br <= rank + 1 && br >= rank - 2).length;
+            stoppers   += (wPawnFiles[af] || []).filter(wr => wr < rank).length;
+          }
+          if (supporters > stoppers) s -= CANDIDATE_BONUS[9 - rank] || 0;
+        }
+      }
     }
   }
 
