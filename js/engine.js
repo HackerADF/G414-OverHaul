@@ -473,6 +473,18 @@ function pawnEval(board, wPawnFiles, bPawnFiles, wKingFile, wKingRank, bKingFile
     if (bc > 0 && !bPawnFiles[f - 1] && !bPawnFiles[f + 1]) s += bc * 20;
   }
 
+  // Pawn chain bonus: pawn that defends another pawn diagonally one rank ahead
+  for (let f = 0; f < 8; f++) {
+    for (const rank of (wPawnFiles[f] || [])) {
+      if ((wPawnFiles[f - 1] || []).includes(rank + 1) || (wPawnFiles[f + 1] || []).includes(rank + 1))
+        s += 10;
+    }
+    for (const rank of (bPawnFiles[f] || [])) {
+      if ((bPawnFiles[f - 1] || []).includes(rank - 1) || (bPawnFiles[f + 1] || []).includes(rank - 1))
+        s -= 10;
+    }
+  }
+
   // Connected pawns bonus: mutual pawn defense on adjacent files (±1 rank)
   for (let f = 0; f < 8; f++) {
     for (const rank of (wPawnFiles[f] || [])) {
