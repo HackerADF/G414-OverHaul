@@ -440,6 +440,40 @@ function pawnEval(board, wPawnFiles, bPawnFiles, wKingFile, wKingRank, bKingFile
     }
   }
 
+  // Rook behind passed pawn: rook on the same file behind a passed pawn supports its advance
+  for (let f = 0; f < 8; f++) {
+    for (const rank of (wPawnFiles[f] || [])) {
+      let passed = true;
+      for (let df = -1; df <= 1; df++) {
+        const bf = f + df; if (bf < 0 || bf > 7) continue;
+        if ((bPawnFiles[bf] || []).some(br => br > rank)) { passed = false; break; }
+      }
+      if (passed) {
+        for (let rr = 0; rr < 8; rr++) {
+          const p = board[rr][f];
+          if (p && p.type === 'r' && p.color === 'w' && (8 - rr) < rank) {
+            s += Math.round(15 * endgameW); break;
+          }
+        }
+      }
+    }
+    for (const rank of (bPawnFiles[f] || [])) {
+      let passed = true;
+      for (let df = -1; df <= 1; df++) {
+        const bf = f + df; if (bf < 0 || bf > 7) continue;
+        if ((wPawnFiles[bf] || []).some(wr => wr < rank)) { passed = false; break; }
+      }
+      if (passed) {
+        for (let rr = 0; rr < 8; rr++) {
+          const p = board[rr][f];
+          if (p && p.type === 'r' && p.color === 'b' && (8 - rr) > rank) {
+            s -= Math.round(15 * endgameW); break;
+          }
+        }
+      }
+    }
+  }
+
   // Backward pawn penalty: pawn that cannot be supported by friendly pawns,
   // whose stop square is controlled by an enemy pawn, and is blocked by one
   for (let f = 0; f < 8; f++) {
