@@ -84,24 +84,25 @@ class BouncingBallsSim:
         if self.paused:
             return
 
-        sub = 8
+        sub = 32          # more substeps prevent phase-through at high speeds
         sub_dt = dt / sub
+        wall_x = 100 + self.small_block.radius
 
         for _ in range(sub):
             # Move
             self.small_block.pos += self.small_block.vel * sub_dt
             self.large_block.pos += self.large_block.vel * sub_dt
 
-            # Wall collision (left wall at x=100)
-            wall_x = 100 + self.small_block.radius
-            if self.small_block.pos.x <= wall_x:
-                self.small_block.pos.x = wall_x
-                self.small_block.vel.x = abs(self.small_block.vel.x)
-                self.collisions += 1
-
-            # Block–block collision
+            # Block–block collision first (can push small block into wall)
             if self._resolve_1d():
                 self.collisions += 1
+
+            # Wall collision AFTER block-block so pushback is caught
+            if self.small_block.pos.x <= wall_x:
+                self.small_block.pos.x = wall_x
+                if self.small_block.vel.x < 0:   # only count if moving into wall
+                    self.small_block.vel.x = -self.small_block.vel.x
+                    self.collisions += 1
 
     def handle_event(self, event: pygame.event.Event) -> None:
         if event.type == pygame.KEYDOWN:

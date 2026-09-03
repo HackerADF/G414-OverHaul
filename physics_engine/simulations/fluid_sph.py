@@ -63,6 +63,36 @@ def _visc_lap(r: float, h: float) -> float:
     return (45.0 / (math.pi * h ** 6)) * (h - r)
 
 
+class _SpatialGrid:
+    """Bucket particles into cells of size *h* for O(n·k) neighbour lookup."""
+
+    def __init__(self, cell_size: float) -> None:
+        self.cell_size = cell_size
+        self._buckets: dict[tuple[int, int], list[_Particle]] = {}
+
+    def build(self, particles: list[_Particle]) -> None:
+        self._buckets.clear()
+        cs = self.cell_size
+        for p in particles:
+            key = (int(p.pos.x // cs), int(p.pos.y // cs))
+            if key not in self._buckets:
+                self._buckets[key] = []
+            self._buckets[key].append(p)
+
+    def get_neighbors(self, p: _Particle) -> list[_Particle]:
+        cs  = self.cell_size
+        cx  = int(p.pos.x // cs)
+        cy  = int(p.pos.y // cs)
+        out = []
+        get = self._buckets.get
+        for dy in (-1, 0, 1):
+            for dx in (-1, 0, 1):
+                bucket = get((cx + dx, cy + dy))
+                if bucket:
+                    out.extend(bucket)
+        return out
+
+
 class FluidSPHSim:
     NAME = "SPH Fluid Simulation"
     DESCRIPTION = (
@@ -78,6 +108,7 @@ class FluidSPHSim:
         self._lmb   = False
         self._rmb   = False
         self._mouse = Vec2.zero()
+        self._grid  = _SpatialGrid(_H)
         self._spawn_dam()
 
     def _spawn_dam(self) -> None:
@@ -129,23 +160,23 @@ class FluidSPHSim:
         if n == 0:
             return
 
-        # 1. Compute density & pressure
-        for i in range(n):
-            pi = parts[i]
+        # Build spatial grid once per frame
+        self._grid.build(parts)
+
+        # 1. Compute density & pressure (grid-accelerated)
+        for pi in parts:
             pi.density = 0.0
-            for j in range(n):
-                if i == j:
+            for pj in self._grid.get_neighbors(pi):
+                if pj is pi:
                     continue
-                pj = parts[j]
                 r2 = (pi.pos - pj.pos).length_sq()
                 if r2 < _H2:
                     pi.density += _PARTICLE_MASS * _poly6(r2, _H2)
             pi.density = max(pi.density, 1e-6)
             pi.pressure = _GAS_CONST * (pi.density - _REST_DENS)
 
-        # 2. Compute forces
-        for i in range(n):
-            pi = parts[i]
+        # 2. Compute forces (grid-accelerated)
+        for pi in parts:
             pi.force = _GRAVITY * _PARTICLE_MASS
 
             if self._rmb:
@@ -154,10 +185,9 @@ class FluidSPHSim:
                 if dist < 120 and dist > 1:
                     pi.force += d.normalized() * (500.0 / max(dist, 10))
 
-            for j in range(n):
-                if i == j:
+            for pj in self._grid.get_neighbors(pi):
+                if pj is pi:
                     continue
-                pj = parts[j]
                 delta = pj.pos - pi.pos
                 r2 = delta.length_sq()
                 if r2 >= _H2:

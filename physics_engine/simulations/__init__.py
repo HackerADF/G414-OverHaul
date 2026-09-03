@@ -6,6 +6,8 @@ from .waves import WaveInterferenceSim
 from .sand import FallingSandSim
 from .fluid_sph import FluidSPHSim
 from .spring_oscillator import SpringOscillatorSim
+from .rotating_rings import RotatingRingsSim
+from .string_web     import StringWebSim
 
 __all__ = [
     "DoublePendulumSim",
@@ -16,4 +18,6 @@ __all__ = [
     "FallingSandSim",
     "FluidSPHSim",
     "SpringOscillatorSim",
+    "RotatingRingsSim",
+    "StringWebSim",
 ]
