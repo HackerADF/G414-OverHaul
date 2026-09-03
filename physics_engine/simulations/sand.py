@@ -119,7 +119,50 @@ class FallingSandSim:
             return
         grid = self.grid
         rows, cols = self.rows, self.cols
-        # Iterate bottom-up, randomise left/right to avoid bias
+
+        # ── Vectorized: fire → smoke decay ────────────────────────────────
+        fire_mask = grid == FIRE
+        if fire_mask.any():
+            die_mask = fire_mask & (
+                np.random.random((rows, cols)) < 0.005
+            )
+            grid[die_mask] = SMOKE
+
+        # ── Vectorized: smoke disappear ────────────────────────────────────
+        smoke_mask = grid == SMOKE
+        if smoke_mask.any():
+            vanish_mask = smoke_mask & (
+                np.random.random((rows, cols)) < 0.002
+            )
+            grid[vanish_mask] = EMPTY
+
+        # ── Vectorized: lava solidify ──────────────────────────────────────
+        lava_mask = grid == LAVA
+        if lava_mask.any():
+            solid_mask = lava_mask & (
+                np.random.random((rows, cols)) < 0.0005
+            )
+            grid[solid_mask] = STONE
+
+        # ── Vectorized: fire spread to flammable neighbours ───────────────
+        if fire_mask.any():
+            # Shift fire mask in 4 directions to find adjacent fire cells
+            fire_above = np.zeros_like(fire_mask)
+            fire_below = np.zeros_like(fire_mask)
+            fire_left  = np.zeros_like(fire_mask)
+            fire_right = np.zeros_like(fire_mask)
+            fire_above[1:, :]  = fire_mask[:-1, :]
+            fire_below[:-1, :] = fire_mask[1:, :]
+            fire_left[:, 1:]   = fire_mask[:, :-1]
+            fire_right[:, :-1] = fire_mask[:, 1:]
+            adj_fire = fire_above | fire_below | fire_left | fire_right
+            flammable_mask = np.isin(grid, list(_FLAMMABLE))
+            ignite_mask = adj_fire & flammable_mask & (
+                np.random.random((rows, cols)) < 0.02
+            )
+            grid[ignite_mask] = FIRE
+
+        # ── Per-cell positional rules (must stay sequential) ──────────────
         for y in range(rows - 2, -1, -1):
             xs = list(range(cols))
             random.shuffle(xs)
@@ -132,11 +175,11 @@ class FallingSandSim:
                 elif cell == WATER:
                     self._update_water(grid, x, y, rows, cols)
                 elif cell == FIRE:
-                    self._update_fire(grid, x, y, rows, cols)
+                    self._update_fire_move(grid, x, y, rows, cols)
                 elif cell == SMOKE:
-                    self._update_smoke(grid, x, y, rows, cols)
+                    self._update_smoke_move(grid, x, y, rows, cols)
                 elif cell == LAVA:
-                    self._update_lava(grid, x, y, rows, cols)
+                    self._update_lava_move(grid, x, y, rows, cols)
 
     def _update_sand(self, g, x, y, rows, cols) -> None:
         below = y + 1
@@ -167,45 +210,25 @@ class FallingSandSim:
                 g[y, nx], g[y, x] = WATER, EMPTY
                 return
 
-    def _update_fire(self, g, x, y, rows, cols) -> None:
-        # Spread to neighbouring flammable cells
-        for dy, dx in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-            ny, nx = y + dy, x + dx
-            if 0 <= ny < rows and 0 <= nx < cols:
-                neighbour = g[ny, nx]
-                if neighbour in _FLAMMABLE and random.random() < 0.02:
-                    g[ny, nx] = FIRE
-        # Chance to become smoke
-        if random.random() < 0.005:
-            g[y, x] = SMOKE
-        # Rise
+    def _update_fire_move(self, g, x, y, rows, cols) -> None:
+        """Fire movement only (spread/decay handled vectorially above)."""
         if y > 0 and g[y - 1, x] == EMPTY and random.random() < 0.3:
             g[y - 1, x], g[y, x] = FIRE, EMPTY
 
-    def _update_smoke(self, g, x, y, rows, cols) -> None:
+    def _update_smoke_move(self, g, x, y, rows, cols) -> None:
+        """Smoke movement only (decay handled vectorially above)."""
         if y > 0:
             dx = random.choice([-1, 0, 0, 1])
             nx = x + dx
             if 0 <= nx < cols and g[y - 1, nx] == EMPTY and random.random() < 0.5:
                 g[y - 1, nx], g[y, x] = SMOKE, EMPTY
-        if random.random() < 0.002:
-            g[y, x] = EMPTY
 
-    def _update_lava(self, g, x, y, rows, cols) -> None:
+    def _update_lava_move(self, g, x, y, rows, cols) -> None:
+        """Lava flow only (solidify/ignite handled vectorially above)."""
         below = y + 1
         if below < rows and g[below, x] == EMPTY:
             g[below, x], g[y, x] = LAVA, EMPTY
             return
-        # Solidify slowly
-        if random.random() < 0.0005:
-            g[y, x] = STONE
-        # Ignite neighbours
-        for dy, dx in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-            ny, nx = y + dy, x + dx
-            if 0 <= ny < rows and 0 <= nx < cols:
-                if g[ny, nx] in _FLAMMABLE and random.random() < 0.01:
-                    g[ny, nx] = FIRE
-        # Lava flows sideways
         dx = random.choice([-1, 1])
         nx = x + dx
         if 0 <= nx < cols and g[y, nx] == EMPTY and random.random() < 0.4:

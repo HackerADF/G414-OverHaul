@@ -22,6 +22,8 @@ from physics_engine.simulations import (
     FallingSandSim,
     FluidSPHSim,
     SpringOscillatorSim,
+    RotatingRingsSim,
+    StringWebSim,
 )
 
 WIDTH  = 1280
@@ -36,6 +38,8 @@ _SIMULATIONS = [
     FallingSandSim,
     FluidSPHSim,
     SpringOscillatorSim,
+    RotatingRingsSim,
+    StringWebSim,
 ]
 
 # ── Menu colours ──────────────────────────────────────────────────────────────
